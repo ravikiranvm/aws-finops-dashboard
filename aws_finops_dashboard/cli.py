@@ -1,8 +1,10 @@
 import argparse
 import sys
+
 from rich.console import Console
 
 console = Console()
+
 
 def welcome_banner() -> None:
     banner = """

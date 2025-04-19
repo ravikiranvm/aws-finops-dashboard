@@ -1,10 +1,9 @@
 import csv
 import json
 import os
+from collections import defaultdict
 from datetime import date, datetime, timedelta
 from typing import List, Optional, Tuple
-
-from collections import defaultdict
 
 from boto3.session import Session
 from rich.console import Console
@@ -90,14 +89,7 @@ def get_cost_data(session: Session, time_range: Optional[int] = None) -> CostDat
 
     # Reformat into groups by service
     aggregated_groups = [
-        {
-            "Keys": [service],
-            "Metrics": {
-                "UnblendedCost": {
-                    "Amount": str(amount)
-                }
-            }
-        }
+        {"Keys": [service], "Metrics": {"UnblendedCost": {"Amount": str(amount)}}}
         for service, amount in aggregated_service_costs.items()
     ]
 
@@ -135,7 +127,9 @@ def get_cost_data(session: Session, time_range: Optional[int] = None) -> CostDat
     current_period_name = (
         f"Current {time_range} days cost" if time_range else "Current month's cost"
     )
-    previous_period_name = f"Previous {time_range} days cost" if time_range else "Last month's cost"
+    previous_period_name = (
+        f"Previous {time_range} days cost" if time_range else "Last month's cost"
+    )
 
     return {
         "account_id": account_id,
@@ -206,8 +200,8 @@ def format_ec2_summary(ec2_data: EC2Summary) -> List[str]:
 
 
 def export_to_csv(
-    data: List[ProfileData], 
-    filename: str, 
+    data: List[ProfileData],
+    filename: str,
     output_dir: Optional[str] = None,
     previous_period_dates: str = "N/A",
     current_period_dates: str = "N/A",
@@ -224,7 +218,7 @@ def export_to_csv(
             output_filename = base_filename
 
         previous_period_header = f"Cost for period\n({previous_period_dates})"
-        current_period_header = f"Cost for period\n({current_period_dates})" 
+        current_period_header = f"Cost for period\n({current_period_dates})"
 
         with open(output_filename, "w", newline="") as csvfile:
             fieldnames = [

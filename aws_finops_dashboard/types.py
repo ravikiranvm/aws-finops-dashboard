@@ -26,8 +26,7 @@ class CostData(TypedDict):
     current_period_start: str
     current_period_end: str
     previous_period_start: str
-    previous_period_end: str   
-
+    previous_period_end: str
 
 
 class ProfileData(TypedDict):
@@ -42,6 +41,7 @@ class ProfileData(TypedDict):
     budget_info: List[str]
     ec2_summary: Dict[str, int]
     ec2_summary_formatted: List[str]
+    recommendations: List[str]
     success: bool
     error: Optional[str]
     current_period_name: str

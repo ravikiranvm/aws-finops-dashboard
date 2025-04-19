@@ -118,3 +118,30 @@ def ec2_summary(
         instance_summary["stopped"] = 0
 
     return instance_summary
+
+
+def get_inactive_ec2_instances(session: Session, regions: List[str]) -> List[str]:
+    """Returns a list of stopped EC2 instances in the specified regions."""
+    inactive_instances = []
+    for region in regions:
+        ec2_client = session.client("ec2", region_name=region)
+        response = ec2_client.describe_instances(
+            Filters=[{"Name": "instance-state-name", "Values": ["stopped"]}]
+        )
+        for reservation in response["Reservations"]:
+            for instance in reservation["Instances"]:
+                inactive_instances.append(instance["InstanceId"])
+    return inactive_instances
+
+
+def get_unused_ebs_volumes(session: Session, regions: List[str]) -> List[str]:
+    """Returns a list of unattached EBS volumes in the specified regions."""
+    unused_volumes = []
+    for region in regions:
+        ec2_client = session.client("ec2", region_name=region)
+        response = ec2_client.describe_volumes(
+            Filters=[{"Name": "status", "Values": ["available"]}]
+        )
+        for volume in response["Volumes"]:
+            unused_volumes.append(volume["VolumeId"])
+    return unused_volumes
