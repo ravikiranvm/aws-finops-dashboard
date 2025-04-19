@@ -6,15 +6,17 @@ from typing import Dict, List, Optional
 import boto3
 from rich import box
 from rich.console import Console
-from rich.table import Column, Table
 from rich.progress import Progress, track
 from rich.status import Status
+from rich.table import Column, Table
 
 from aws_finops_dashboard.aws_client import (
     ec2_summary,
     get_accessible_regions,
     get_account_id,
     get_aws_profiles,
+    get_inactive_ec2_instances,
+    get_unused_ebs_volumes,
 )
 from aws_finops_dashboard.cost_processor import (
     export_to_csv,
@@ -44,11 +46,30 @@ def process_single_profile(
         else:
             profile_regions = get_accessible_regions(session)
 
+        inactive_ec2_instances = get_inactive_ec2_instances(session, profile_regions)
+        unused_ebs_volumes = get_unused_ebs_volumes(session, profile_regions)
+
         ec2_data = ec2_summary(session, profile_regions)
         service_costs, service_cost_data = process_service_costs(cost_data)
         budget_info = format_budget_info(cost_data["budgets"])
         account_id = cost_data.get("account_id", "Unknown") or "Unknown"
         ec2_summary_text = format_ec2_summary(ec2_data)
+
+        recommendations = []
+
+        if inactive_ec2_instances:
+            recommendations.append(
+                f"Stopped EC2 instances:: {', '.join(inactive_ec2_instances)}. Consider stopping or deleting them if not in use."
+            )
+        else:
+            recommendations.append("No issues detected with EC2 instances.")
+
+        if unused_ebs_volumes:
+            recommendations.append(
+                f"Unused EBS volumes: {', '.join(unused_ebs_volumes)}. Consider deleting or archiving them if not needed."
+            )
+        else:
+            recommendations.append("No issues detected with EBS volumes.")
 
         return {
             "profile": profile,
@@ -60,6 +81,7 @@ def process_single_profile(
             "budget_info": budget_info,
             "ec2_summary": ec2_data,
             "ec2_summary_formatted": ec2_summary_text,
+            "recommendations": recommendations,
             "success": True,
             "error": None,
             "current_period_name": cost_data.get(
@@ -79,6 +101,7 @@ def process_single_profile(
             "budget_info": ["N/A"],
             "ec2_summary": {"N/A": 0},
             "ec2_summary_formatted": ["Error"],
+            "recommendations": [],
             "success": False,
             "error": str(e),
             "current_period_name": "Current month",
@@ -126,6 +149,11 @@ def process_combined_profiles(
     else:
         primary_regions = get_accessible_regions(primary_session)
 
+    inactive_ec2_instances = get_inactive_ec2_instances(
+        primary_session, primary_regions
+    )
+    unused_ebs_volumes = get_unused_ebs_volumes(primary_session, primary_regions)
+
     combined_ec2 = ec2_summary(primary_session, primary_regions)
 
     service_costs = []
@@ -148,6 +176,22 @@ def process_combined_profiles(
 
     profile_list = ", ".join(profiles)
 
+    recommendations = []
+
+    if inactive_ec2_instances:
+        recommendations.append(
+            f"Stopped EC2 instances:: {', '.join(inactive_ec2_instances)}. Consider stopping or deleting them if not in use."
+        )
+    else:
+        recommendations.append("No issues detected with EC2 instances.")
+
+    if unused_ebs_volumes:
+        recommendations.append(
+            f"Unused EBS volumes: {', '.join(unused_ebs_volumes)}. Consider deleting or archiving them if not needed."
+        )
+    else:
+        recommendations.append("No issues detected with EBS volumes.")
+
     return {
         "profile": profile_list,
         "account_id": account_id,
@@ -158,6 +202,7 @@ def process_combined_profiles(
         "budget_info": budget_info,
         "ec2_summary": combined_ec2,
         "ec2_summary_formatted": ec2_summary_text,
+        "recommendations": recommendations,
         "success": True,
         "error": None,
         "current_period_name": account_cost_data.get(
@@ -183,6 +228,7 @@ def create_display_table(
         Column("Cost By Service"),
         Column("Budget Status"),
         Column("EC2 Instance Summary", justify="center"),
+        Column("Recommandations", justify="left"),
         title="AWS FinOps Dashboard",
         caption="AWS FinOps Dashboard CLI",
         box=box.ASCII_DOUBLE_HEAD,
@@ -203,6 +249,7 @@ def add_profile_to_table(table: Table, profile_data: ProfileData) -> None:
             + "[/]",
             "[bright_yellow]" + "\n".join(profile_data["budget_info"]) + "[/]",
             "\n".join(profile_data["ec2_summary_formatted"]),
+            "[yellow]" + "\n".join(profile_data["recommendations"]) + "[/]",
         )
     else:
         table.add_row(
@@ -210,6 +257,7 @@ def add_profile_to_table(table: Table, profile_data: ProfileData) -> None:
             "[red]Error[/]",
             "[red]Error[/]",
             f"[red]Failed to process profile: {profile_data['error']}[/]",
+            "[red]N/A[/]",
             "[red]N/A[/]",
             "[red]N/A[/]",
         )
@@ -280,7 +328,12 @@ def run_dashboard(args: argparse.Namespace) -> int:
             previous_period_dates = "N/A"
             current_period_dates = "N/A"
 
-        table = create_display_table(previous_period_dates, current_period_dates, previous_period_name, current_period_name)
+        table = create_display_table(
+            previous_period_dates,
+            current_period_dates,
+            previous_period_name,
+            current_period_name,
+        )
 
     if args.combine:
         account_profiles = defaultdict(list)
@@ -302,7 +355,9 @@ def run_dashboard(args: argparse.Namespace) -> int:
                     f"[bold red]Error checking account ID for profile {profile}: {str(e)}[/]"
                 )
 
-        for account_id, profiles in track(account_profiles.items(), description="[bright_cyan]Fetching cost data..."):
+        for account_id, profiles in track(
+            account_profiles.items(), description="[bright_cyan]Fetching cost data..."
+        ):
             if len(profiles) > 1:
                 profile_data = process_combined_profiles(
                     account_id, profiles, user_regions, time_range
@@ -313,11 +368,12 @@ def run_dashboard(args: argparse.Namespace) -> int:
                 )
             export_data.append(profile_data)
             add_profile_to_table(table, profile_data)
-            
 
     else:
-        
-        for profile in track(profiles_to_use, description="[bright_cyan]Fetching cost data..."):
+
+        for profile in track(
+            profiles_to_use, description="[bright_cyan]Fetching cost data..."
+        ):
             profile_data = process_single_profile(profile, user_regions, time_range)
             export_data.append(profile_data)
             add_profile_to_table(table, profile_data)
@@ -328,11 +384,12 @@ def run_dashboard(args: argparse.Namespace) -> int:
         for report_type in args.report_type:
             if report_type == "csv":
                 csv_path = export_to_csv(
-                    export_data, 
-                    args.report_name, 
+                    export_data,
+                    args.report_name,
                     args.dir,
                     previous_period_dates=previous_period_dates,
-                    current_period_dates=current_period_dates,)
+                    current_period_dates=current_period_dates,
+                )
                 if csv_path:
                     console.print(
                         f"[bright_green]Successfully exported to CSV format: {csv_path}[/]"
