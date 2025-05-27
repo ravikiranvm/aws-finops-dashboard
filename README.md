@@ -116,6 +116,12 @@ pip install aws-finops-dashboard
 # Install uv if you don't have it yet
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
+# Create project directory
+mkdir aws-finops-dashboard && cd aws-finops-dashboard
+
+# Create and activate python virtual environment
+python3 -m venv .venv && source .venv/bin/activate
+
 # Install aws-finops-dashboard
 uv pip install aws-finops-dashboard
 ```
@@ -125,6 +131,9 @@ uv pip install aws-finops-dashboard
 # Clone the repository
 git clone https://github.com/ravikiranvm/aws-finops-dashboard.git
 cd aws-finops-dashboard
+
+# Create and activate python virtual environment
+python -m venv .venv && source .venv/bin/activate
 
 # Install using pip
 pip install -e .
