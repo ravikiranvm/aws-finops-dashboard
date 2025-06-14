@@ -1,3 +1,4 @@
+import os
 from collections import defaultdict
 from typing import Dict, List, Optional
 
@@ -32,7 +33,22 @@ def process_single_profile(
 ) -> ProfileData:
     """Process a single AWS profile and return its data."""
     try:
-        session = boto3.Session(profile_name=profile)
+        session: boto3.Session
+        if (
+            os.getenv("AWS_ACCESS_KEY_ID")
+            and os.getenv("AWS_SECRET_ACCESS_KEY")
+        ):
+            console.log(
+                "Using AWS credentials from environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN if set)."
+            )
+            session = boto3.Session()
+        elif profile:
+            console.log(f"Using AWS profile: {profile}")
+            session = boto3.Session(profile_name=profile)
+        else:
+            console.log("No specific profile provided and no overriding environment credentials. Attempting default AWS session resolution.")
+            session = boto3.Session()
+
         cost_data = get_cost_data(session, time_range, tag)
 
         if user_regions:
@@ -95,7 +111,22 @@ def process_combined_profiles(
     """Process multiple profiles from the same AWS account."""
 
     primary_profile = profiles[0]
-    primary_session = boto3.Session(profile_name=primary_profile)
+
+    primary_session: boto3.Session
+    if (
+        os.getenv("AWS_ACCESS_KEY_ID")
+        and os.getenv("AWS_SECRET_ACCESS_KEY")
+    ):
+        console.log(
+            "Using AWS credentials from environment variables for combined profile processing (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN if set)."
+        )
+        primary_session = boto3.Session()
+    elif primary_profile:
+        console.log(f"Using AWS profile for combined processing: {primary_profile}")
+        primary_session = boto3.Session(profile_name=primary_profile)
+    else:
+        console.log("No specific primary profile for combined processing and no overriding environment credentials. Attempting default AWS session resolution.")
+        primary_session = boto3.Session()
 
     account_cost_data: CostData = {
         "account_id": account_id,
