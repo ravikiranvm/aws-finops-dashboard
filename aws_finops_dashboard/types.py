@@ -1,6 +1,6 @@
 """Type definitions for AWS FinOps Dashboard."""
 
-from typing import Dict, List, Optional, Tuple, TypedDict
+from typing import Dict, List, Optional, Tuple, TypedDict, Union
 
 
 class BudgetInfo(TypedDict):
@@ -19,10 +19,11 @@ class CostData(TypedDict):
     current_month: float
     last_month: float
     current_month_cost_by_service: List[Dict]
+    previous_month_cost_by_service: List[Dict]
     budgets: List[BudgetInfo]
     current_period_name: str
     previous_period_name: str
-    time_range: Optional[int]
+    time_range: Optional[Union[int, str]]
     current_period_start: str
     current_period_end: str
     previous_period_start: str
@@ -39,6 +40,8 @@ class ProfileData(TypedDict):
     current_month: float
     service_costs: List[Tuple[str, float]]
     service_costs_formatted: List[str]
+    previous_service_costs: List[Tuple[str, float]]
+    previous_service_costs_formatted: List[str]
     budget_info: List[str]
     ec2_summary: Dict[str, int]
     ec2_summary_formatted: List[str]
@@ -59,7 +62,7 @@ class CLIArgs(TypedDict, total=False):
     report_name: Optional[str]
     report_type: Optional[List[str]]
     dir: Optional[str]
-    time_range: Optional[int]
+    time_range: Optional[Union[int, str]]
 
 
 RegionName = str

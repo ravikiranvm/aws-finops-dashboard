@@ -1,4 +1,4 @@
-# AWS FinOps Dashboard (CLI) v2.2.7
+# AWS FinOps Dashboard (CLI) v2.3.0
 
 [![PyPI version](https://img.shields.io/pypi/v/aws-finops-dashboard.svg)](https://pypi.org/project/aws-finops-dashboard/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -19,8 +19,10 @@ Key features include:
 *   **Audit Your AWS Accounts:** Quickly identify spending patterns, untagged resources, underutilised resources and potential savings.
 ![alt text](audit_report.png)
 *   **Generate Cost & Audit Reports:** You can generate Cost, Trend and Audit Reports in PDF, CSV & JSON formats for further analysis and reporting purposes.
-![alt text](audit_report_pdf.png)
-![alt text](cost_report_pdf.png)
+![alt text](cost-report.jpg)
+![alt text](audit-report.jpg)
+* **Slack Integration:** You can send your cost and audit reports to your Slack workspace in CSV/PDF/JSON formats.
+![alt text](slack-export.png)
 
 ## Table of Contents
 
@@ -47,6 +49,7 @@ Key features include:
 - **Cost Analysis by Time Period**: 
   - View current & previous month's spend by default
   - Set custom time ranges (e.g., 7, 30, 90 days) with `--time-range` option
+  - Use `--time-range last-month` to query the previous calendar month (includes service breakdown for that month)
 - **Cost by AWS Service**: Sorted by highest cost for better insights
 - **Cost by Tag**: Get the cost data by one or more tags with `--tag`(cost allocation tags must be enabled)
 - **AWS Budgets Information**: Displays budget limits and actual spend
@@ -65,6 +68,8 @@ Key features include:
   - PDF export with `--report-name` and `--report-type pdf`
   - Export to both CSV and JSON formats with `--report-name` and `--report-type csv json`
   - Specify output directory using `--dir`
+  - Export to S3 with `--s3-bucket` and `--s3-profile`
+  - Export to Slack channel with `--slack` (requires `SLACK_BOT_TOKEN` environment variable)
   - **Note**: Trend reports (generated via `--trend`) currently only support JSON export. Other formats specified in `--report-type` will be ignored for these reports.
 - **Improved Error Handling**: Resilient and user-friendly error messages
 - **Beautiful Terminal UI**: Styled with the Rich library for a visually appealing experience
@@ -90,6 +95,8 @@ Key features include:
   - `lambda:ListTags`
   - `elbv2:DescribeLoadBalancers`
   - `elbv2:DescribeTags`
+  - `s3:PutObject` (required when using `--s3-bucket` to export reports to S3)
+  - `s3:ListBucket` (required when using `--s3-bucket` to export reports to S3)
   
 ---
 
@@ -144,6 +151,20 @@ python -m venv .venv && source .venv/bin/activate
 pip install -e .
 ```
 
+### Option 5: Using Docker
+```bash
+git clone https://github.com/ravikiranvm/aws-finops-dashboard.git
+cd aws-finops-dashboard
+docker compose build
+
+# Run commands
+docker compose run --rm aws-finops --all
+docker compose run --rm aws-finops --profiles dev prod --regions us-east-1
+docker compose run --rm aws-finops --audit
+```
+
+**Note:** AWS credentials are mounted from `~/.aws` automatically via docker-compose.yml.
+
 ---
 
 ## AWS CLI Profile Setup
@@ -157,6 +178,34 @@ aws configure --profile profile2-name
 ```
 
 Repeat this for all the profiles you want the dashboard to potentially access.
+
+---
+
+## Slack Setup (Optional)
+
+To send reports to Slack, you need to:
+
+1. **Create a Slack App and Bot Token:**
+   - Go to https://api.slack.com/apps
+   - Create a new app or select an existing one
+   - Navigate to "OAuth & Permissions"
+   - Add Bot Token Scopes:
+     - `files:write` (to upload files)
+     - `chat:write` (to send messages)
+   - Install the app to your workspace
+   - Copy the "Bot User OAuth Token" (starts with `xoxb-`)
+
+2. **Set the Environment Variable:**
+   ```bash
+   export SLACK_BOT_TOKEN=xoxb-your-token-here
+   ```
+
+3. **Use the `--slack` flag with a channel identifier:**
+   - Channel ID: `--slack C1234567890`
+
+**Note:** 
+   - The token must be set as an environment variable (`SLACK_BOT_TOKEN`). It cannot be provided via config file or CLI flag for security reasons.
+   - Your app's bot user needs to be in the channel (otherwise, you will get either not_in_channel or channel_not_found error code).
 
 ---
 
@@ -181,9 +230,13 @@ aws-finops [options]
 | `--report-name`, `-n` | Specify the base name for the report file (without extension). |
 | `--report-type`, `-y` | Specify report types (space-separated): 'csv', 'json', 'pdf'. For reports generated with `--audit`, only 'pdf' is applicable and other types will be ignored. |
 | `--dir`, `-d` | Directory to save the report file(s) (default: current directory). |
-| `--time-range`, `-t` | Time range for cost data in days (default: current month). Examples: 7, 30, 90. |
+| `--time-range`, `-t` | Time range for cost data in days (default: current month). Examples: 7, 30, 90. Use `last-month` to query the previous calendar month. |
 | `--trend` | View cost trend analysis for the last 6 months. |
 | `--audit` | View list of untagged, unused resoruces and budget breaches. |
+| `--s3-bucket`, `-s3` | S3 bucket name to export report files to. When specified, files are uploaded to S3 instead of saving locally. Requires `--s3-profile`. |
+| `--s3-prefix`, `-s3p` | S3 key prefix/folder path for report files (optional). Example: `reports/2025/january` |
+| `--s3-profile`, `-s3s` | AWS CLI profile to use for S3 uploads. Required when `--s3-bucket` is specified. |
+| `--slack` | Send reports to Slack channel. Provide channel identifier: `--slack C1234567890`. Requires `SLACK_BOT_TOKEN` environment variable. |
 
 ### Examples
 
@@ -223,6 +276,16 @@ aws-finops --all --report-name aws_dashboard_data --report-type csv json
 
 # Export combined data for 'dev' and 'prod' profiles to a specific directory
 aws-finops --profiles dev prod --combine --report-name report --report-type csv --dir output_reports
+
+# Export data to CSV format and upload to S3 bucket
+aws-finops --all --report-name aws_dashboard_data --report-type csv --s3-bucket my-finops-reports --s3-profile prod
+
+# Export data to PDF and send to Slack channel (requires SLACK_BOT_TOKEN env var)
+export SLACK_BOT_TOKEN=xoxb-your-token-here
+aws-finops --all --report-name monthly_report --report-type pdf --slack channel-id
+
+# Export multiple formats to Slack
+aws-finops --all --report-name monthly_report --report-type csv json pdf --slack channel-id
 
 # View cost trend analysis as bar charts for profile 'dev' and 'prod'
 aws-finops --profiles dev prod -r us-east-1 --trend
@@ -268,6 +331,10 @@ time_range = 30 # Defaults to 30 days
 tag = ["CostCenter=Alpha", "Project=Phoenix"] # Optional
 audit = false # Set to true to run audit report by default
 trend = false # Set to true to run trend report by default
+s3_bucket = "my-finops-reports-bucket" # Optional: S3 bucket for report uploads
+s3_prefix = "reports/2025" # Optional: S3 key prefix/folder path
+s3_profile = "prod" # Required when s3_bucket is specified: AWS profile for S3 uploads
+slack = "C1234567890" # Optional: Slack channel ID to send reports to. Requires SLACK_BOT_TOKEN environment variable.
 ```
 
 ### YAML Configuration Example (`config.yaml` or `config.yml`)
@@ -292,6 +359,10 @@ tag:
   - "Project=Phoenix"
 audit: false # Set to true to run audit report by default
 trend: false # Set to true to run trend report by default
+s3_bucket: "my-finops-reports-bucket" # Optional: S3 bucket for report uploads
+s3_prefix: "reports/2025" # Optional: S3 key prefix/folder path
+s3_profile: "prod" # Required when s3_bucket is specified: AWS profile for S3 uploads
+slack: "C1234567890" # Optional: Slack channel ID to send reports to. Requires SLACK_BOT_TOKEN environment variable.
 ```
 
 ### JSON Configuration Example (`config.json`)
@@ -307,7 +378,11 @@ trend: false # Set to true to run trend report by default
   "time_range": 30,
   "tag": ["CostCenter=Alpha", "Project=Phoenix"],
   "audit": false, /* Set to true to run audit report by default */
-  "trend": false /* Set to true to run trend report by default */
+  "trend": false, /* Set to true to run trend report by default */
+  "s3_bucket": "my-finops-reports-bucket", /* Optional: S3 bucket for report uploads */
+  "s3_prefix": "reports/2025", /* Optional: S3 key prefix/folder path */
+  "s3_profile": "prod", /* Required when s3_bucket is specified: AWS profile for S3 uploads */
+  "slack": "C1234567890" /* Optional: Slack channel ID to send reports to. Requires SLACK_BOT_TOKEN environment variable. */
 }
 ```
 ---
@@ -322,7 +397,8 @@ When exporting to CSV, a file is generated with the following columns:
 - `AWS Account ID`
 - `Last Month Cost` (or previous period based on time range)
 - `Current Month Cost` (or current period based on time range)
-- `Cost By Service` (Each service and its cost appears on a new line within the cell)
+- `Previous Period Cost By Service` (Each service and its cost appears on a new line within the cell)
+- `Current Period Cost By Service` (Each service and its cost appears on a new line within the cell)
 - `Budget Status` (Each budget's limit and actual spend appears on a new line within the cell)
 - `EC2 Instances` (Each instance state and its count appears on a new line within the cell)
 

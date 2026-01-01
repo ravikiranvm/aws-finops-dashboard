@@ -1,6 +1,6 @@
 import os
 from collections import defaultdict
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import boto3
 from rich.console import Console
@@ -28,7 +28,7 @@ console = Console()
 def process_single_profile(
     profile: str,
     user_regions: Optional[List[str]] = None,
-    time_range: Optional[int] = None,
+    time_range: Optional[Union[int, str]] = None,
     tag: Optional[List[str]] = None,
 ) -> ProfileData:
     """Process a single AWS profile and return its data."""
@@ -57,7 +57,12 @@ def process_single_profile(
             profile_regions = get_accessible_regions(session)
 
         ec2_data = ec2_summary(session, profile_regions)
-        service_costs, service_cost_data = process_service_costs(cost_data)
+        service_costs, service_cost_data = process_service_costs(
+            cost_data["current_month_cost_by_service"]
+        )
+        prev_service_costs, prev_service_cost_data = process_service_costs(
+            cost_data.get("previous_month_cost_by_service", [])
+        )
         budget_info = format_budget_info(cost_data["budgets"])
         account_id = cost_data.get("account_id", "Unknown") or "Unknown"
         ec2_summary_text = format_ec2_summary(ec2_data)
@@ -72,6 +77,8 @@ def process_single_profile(
             "current_month": cost_data["current_month"],
             "service_costs": service_cost_data,
             "service_costs_formatted": service_costs,
+            "previous_service_costs": prev_service_cost_data,
+            "previous_service_costs_formatted": prev_service_costs,
             "budget_info": budget_info,
             "ec2_summary": ec2_data,
             "ec2_summary_formatted": ec2_summary_text,
@@ -90,6 +97,8 @@ def process_single_profile(
             "current_month": 0,
             "service_costs": [],
             "service_costs_formatted": [f"Failed to process profile: {str(e)}"],
+            "previous_service_costs": [],
+            "previous_service_costs_formatted": ["Error"],
             "budget_info": ["N/A"],
             "ec2_summary": {"N/A": 0},
             "ec2_summary_formatted": ["Error"],
@@ -105,7 +114,7 @@ def process_combined_profiles(
     account_id: str,
     profiles: List[str],
     user_regions: Optional[List[str]] = None,
-    time_range: Optional[int] = None,
+    time_range: Optional[Union[int, str]] = None,
     tag: Optional[List[str]] = None,
 ) -> ProfileData:
     """Process multiple profiles from the same AWS account."""
@@ -133,6 +142,7 @@ def process_combined_profiles(
         "current_month": 0.0,
         "last_month": 0.0,
         "current_month_cost_by_service": [],
+        "previous_month_cost_by_service": [],
         "budgets": [],
         "current_period_name": "Current month",
         "previous_period_name": "Last month",
@@ -156,6 +166,7 @@ def process_combined_profiles(
     combined_current_month = account_cost_data["current_month"]
     combined_last_month = account_cost_data["last_month"]
     combined_service_costs_dict: Dict[str, float] = defaultdict(float)
+    combined_prev_service_costs_dict: Dict[str, float] = defaultdict(float)
 
     for group in account_cost_data["current_month_cost_by_service"]:
         if "Keys" in group and "Metrics" in group:
@@ -163,6 +174,13 @@ def process_combined_profiles(
             cost_amount = float(group["Metrics"]["UnblendedCost"]["Amount"])
             if cost_amount > 0.001:
                 combined_service_costs_dict[service_name] += cost_amount
+
+    for group in account_cost_data.get("previous_month_cost_by_service", []):
+        if "Keys" in group and "Metrics" in group:
+            service_name = group["Keys"][0]
+            cost_amount = float(group["Metrics"]["UnblendedCost"]["Amount"])
+            if cost_amount > 0.001:
+                combined_prev_service_costs_dict[service_name] += cost_amount
 
     combined_budgets = account_cost_data["budgets"]
 
@@ -179,13 +197,26 @@ def process_combined_profiles(
         for service, cost in combined_service_costs_dict.items()
         if cost > 0.001
     ]
+    previous_service_cost_data = [
+        (service, cost)
+        for service, cost in combined_prev_service_costs_dict.items()
+        if cost > 0.001
+    ]
     service_cost_data.sort(key=lambda x: x[1], reverse=True)
+    previous_service_cost_data.sort(key=lambda x: x[1], reverse=True)
 
     if not service_cost_data:
         service_costs.append("No costs associated with this account")
     else:
         for service_name, cost_amount in service_cost_data:
             service_costs.append(f"{service_name}: ${cost_amount:.2f}")
+
+    previous_service_costs = []
+    if not previous_service_cost_data:
+        previous_service_costs.append("No costs associated with this account")
+    else:
+        for service_name, cost_amount in previous_service_cost_data:
+            previous_service_costs.append(f"{service_name}: ${cost_amount:.2f}")
 
     budget_info = format_budget_info(combined_budgets)
 
@@ -204,6 +235,8 @@ def process_combined_profiles(
         "current_month": combined_current_month,
         "service_costs": service_cost_data,
         "service_costs_formatted": service_costs,
+        "previous_service_costs": previous_service_cost_data,
+        "previous_service_costs_formatted": previous_service_costs,
         "budget_info": budget_info,
         "ec2_summary": combined_ec2,
         "ec2_summary_formatted": ec2_summary_text,

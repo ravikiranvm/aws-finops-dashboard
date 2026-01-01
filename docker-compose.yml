@@ -1,0 +1,11 @@
+services:
+  aws-finops:
+    build: .
+    image: aws-finops-dashboard:latest
+    tty: true
+    volumes:
+      - ~/.aws:/root/.aws:ro
+      - ./reports:/app/reports
+    environment:
+      - SLACK_BOT_TOKEN
+

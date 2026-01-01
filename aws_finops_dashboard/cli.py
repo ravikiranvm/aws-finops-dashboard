@@ -8,9 +8,21 @@ from rich.console import Console
 
 from aws_finops_dashboard.helpers import load_config_file
 
+
+def parse_time_range(value: str):
+    """Parse time range input allowing integers or the 'last-month' keyword."""
+    if value.lower() == "last-month":
+        return "last-month"
+    try:
+        return int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            "time-range must be an integer number of days or 'last-month'"
+        ) from exc
+
 console = Console()
 
-__version__ = "2.2.7"
+__version__ = "2.3.0"
 
 
 def welcome_banner() -> None:
@@ -114,8 +126,11 @@ def main() -> int:
     parser.add_argument(
         "--time-range",
         "-t",
-        help="Time range for cost data in days (default: current month). Examples: 7, 30, 90",
-        type=int,
+        help=(
+            "Time range for cost data: number of days (e.g. 7, 30, 90) "
+            "or 'last-month' for the previous calendar month"
+        ),
+        type=parse_time_range,
     )
     parser.add_argument(
         "--tag",
@@ -132,7 +147,30 @@ def main() -> int:
     parser.add_argument(
         "--audit",
         action="store_true",
-        help="Display an audit report with cost anomalies, stopped EC2 instances, unused EBS columes, budget alerts, and more",
+        help="Display an audit report with cost anomalies, stopped EC2 instances, unused EBS volumes, budget alerts, and more",
+    )
+    parser.add_argument(
+        "--s3-bucket",
+        "-s3",
+        help="S3 bucket to export the report files to",
+        type=str,
+    )
+    parser.add_argument(
+        "--s3-prefix",
+        "-s3p",
+        help="S3 prefix to export the report files to",
+        type=str,
+    )
+    parser.add_argument(
+        "--s3-profile",
+        "-s3s",
+        help="CLI profile to use for S3 uploads",
+        type=str,
+    )
+    parser.add_argument(
+        "--slack",
+        help="Send reports to Slack channel. Provide channel identifier: --slack #channel-name or --slack C1234567890",
+        type=str,
     )
 
     args = parser.parse_args()
@@ -148,6 +186,43 @@ def main() -> int:
         for key, value in config_data.items():
             if hasattr(args, key) and getattr(args, key) == parser.get_default(key):
                 setattr(args, key, value)
+
+    # Normalize time_range to support config files providing strings
+    if isinstance(args.time_range, str):
+        if args.time_range.lower() == "last-month":
+            args.time_range = "last-month"
+        else:
+            try:
+                args.time_range = int(args.time_range)
+            except ValueError:
+                console.print(
+                    "[bold red]Error: --time-range must be an integer number of days or 'last-month'[/]"
+                )
+                return 1
+
+    # Validate S3 arguments after config file is loaded
+    if args.s3_bucket and args.report_name and not args.s3_profile:
+        console.print(
+            "[bold red]Error: --s3-profile is required when --s3-bucket is specified[/]"
+        )
+        console.print(
+            "[yellow]Please specify which AWS profile to use for S3 upload[/]"
+        )
+        return 1
+
+    # Validate Slack arguments
+    if args.slack:
+        # Check if token is provided via environment variable
+        import os
+        slack_token = os.getenv("SLACK_BOT_TOKEN")
+        if not slack_token:
+            console.print(
+                "[bold red]Error: SLACK_BOT_TOKEN environment variable is required when --slack is used[/]"
+            )
+            console.print(
+                "[yellow]Please set SLACK_BOT_TOKEN environment variable with your Slack bot token[/]"
+            )
+            return 1
 
     result = run_dashboard(args)
     return 0 if result == 0 else 1

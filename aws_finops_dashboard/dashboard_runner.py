@@ -1,6 +1,7 @@
 import argparse
+import os
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import boto3
 from rich import box
@@ -31,8 +32,9 @@ from aws_finops_dashboard.helpers import (
     export_cost_dashboard_to_pdf,
     export_audit_report_to_csv,
     export_audit_report_to_json,
-    export_trend_data_to_json
+    export_trend_data_to_json,
 )
+from aws_finops_dashboard.export_handler import ExportHandler, generate_slack_message
 from aws_finops_dashboard.profile_processor import (
     process_combined_profiles,
     process_single_profile,
@@ -45,7 +47,7 @@ console = Console()
 
 def _initialize_profiles(
     args: argparse.Namespace,
-) -> Tuple[List[str], Optional[List[str]], Optional[int]]:
+) -> Tuple[List[str], Optional[List[str]], Optional[Union[int, str]]]:
     """Initialize AWS profiles based on arguments."""
     available_profiles = get_aws_profiles()
     if not available_profiles:
@@ -192,29 +194,79 @@ def _run_audit_report(profiles_to_use: List[str], args: argparse.Namespace) -> N
     )
 
     if args.report_name:  # Ensure report_name is provided for any export
+        # Create export handler
+        export_handler = None
+        if args.slack:
+            # Slack export
+            slack_token = os.getenv("SLACK_BOT_TOKEN")
+            if slack_token:
+                console.print(
+                    f"[bright_cyan]Sending reports to Slack channel: {args.slack}[/]"
+                )
+                # Generate message for audit report
+                slack_msg = generate_slack_message(
+                    report_type="audit",
+                    report_name=args.report_name,
+                    profiles=profiles_to_use,
+                )
+                export_handler = ExportHandler(
+                    slack_token=slack_token,
+                    slack_channel=args.slack,
+                    slack_message=slack_msg,
+                )
+            else:
+                console.print(
+                    "[bold red]Error: SLACK_BOT_TOKEN environment variable not found[/]"
+                )
+                return
+        elif args.s3_bucket and args.s3_profile:
+            try:
+                session = boto3.Session(profile_name=args.s3_profile)
+                console.print(
+                    f"[bright_cyan]Using profile '{args.s3_profile}' for S3 upload[/]"
+                )
+                export_handler = ExportHandler(
+                    s3_bucket=args.s3_bucket,
+                    s3_prefix=args.s3_prefix,
+                    session=session,
+                )
+            except Exception as e:
+                console.print(
+                    f"[bold red]Error creating session for S3 upload: {str(e)}[/]"
+                )
+                return
+        else:
+            export_handler = ExportHandler(local_dir=args.dir)
+
         if args.report_type:
             for report_type in args.report_type:
                 if report_type == "csv":
                     csv_path = export_audit_report_to_csv(
-                        audit_data, args.report_name, args.dir
+                        audit_data, args.report_name,
+                        path=args.dir if not args.s3_bucket and not args.slack else None,
+                        export_handler=export_handler,
                     )
-                    if csv_path:
+                    if csv_path and not args.s3_bucket and not args.slack:
                         console.print(
                             f"[bright_green]Successfully exported to CSV format: {csv_path}[/]"
                         )
                 elif report_type == "json":
                     json_path = export_audit_report_to_json(
-                        raw_audit_data, args.report_name, args.dir
+                        raw_audit_data, args.report_name,
+                        path=args.dir if not args.s3_bucket and not args.slack else None,
+                        export_handler=export_handler,
                     )
-                    if json_path:
+                    if json_path and not args.s3_bucket and not args.slack:
                         console.print(
                             f"[bright_green]Successfully exported to JSON format: {json_path}[/]"
                         )
                 elif report_type == "pdf":
                     pdf_path = export_audit_report_to_pdf(
-                        audit_data, args.report_name, args.dir
+                        audit_data, args.report_name,
+                        path=args.dir if not args.s3_bucket and not args.slack else None,
+                        export_handler=export_handler,
                     )
-                    if pdf_path:
+                    if pdf_path and not args.s3_bucket and not args.slack:
                         console.print(
                             f"[bright_green]Successfully exported to PDF format: {pdf_path}[/]"
                         )
@@ -286,18 +338,64 @@ def _run_trend_analysis(profiles_to_use: List[str], args: argparse.Namespace) ->
                 )
 
     if raw_trend_data and args.report_name and args.report_type:
+        # Create export handler
+        export_handler = None
+        if args.slack:
+            # Slack export
+            slack_token = os.getenv("SLACK_BOT_TOKEN")
+            if slack_token:
+                console.print(
+                    f"[bright_cyan]Sending reports to Slack channel: {args.slack}[/]"
+                )
+                # Generate message for trend report
+                slack_msg = generate_slack_message(
+                    report_type="trend",
+                    report_name=args.report_name,
+                    profiles=profiles_to_use,
+                )
+                export_handler = ExportHandler(
+                    slack_token=slack_token,
+                    slack_channel=args.slack,
+                    slack_message=slack_msg,
+                )
+            else:
+                console.print(
+                    "[bold red]Error: SLACK_BOT_TOKEN environment variable not found[/]"
+                )
+                return
+        elif args.s3_bucket and args.s3_profile:
+            try:
+                session = boto3.Session(profile_name=args.s3_profile)
+                console.print(
+                    f"[bright_cyan]Using profile '{args.s3_profile}' for S3 upload[/]"
+                )
+                export_handler = ExportHandler(
+                    s3_bucket=args.s3_bucket,
+                    s3_prefix=args.s3_prefix,
+                    session=session,
+                )
+            except Exception as e:
+                console.print(
+                    f"[bold red]Error creating session for S3 upload: {str(e)}[/]"
+                )
+                return
+        else:
+            export_handler = ExportHandler(local_dir=args.dir)
+
         if "json" in args.report_type:
             json_path = export_trend_data_to_json(
-                raw_trend_data, args.report_name, args.dir
+                raw_trend_data, args.report_name,
+                path=args.dir if not args.s3_bucket and not args.slack else None,
+                export_handler=export_handler,
             )
-            if json_path:
+            if json_path and not args.s3_bucket and not args.slack:
                 console.print(
                     f"[bright_green]Successfully exported trend data to JSON format: {json_path}[/]"
                 )
 
 
 def _get_display_table_period_info(
-    profiles_to_use: List[str], time_range: Optional[int]
+    profiles_to_use: List[str], time_range: Optional[Union[int, str]]
 ) -> Tuple[str, str, str, str]:
     """Get period information for the display table."""
     if profiles_to_use:
@@ -342,7 +440,8 @@ def create_display_table(
             justify="center",
             vertical="middle",
         ),
-        Column("Cost By Service", vertical="middle"),
+        Column("Previous Period Cost By Service", vertical="middle"),
+        Column("Current Period Cost By Service", vertical="middle"),
         Column("Budget Status", vertical="middle"),
         Column("EC2 Instance Summary", justify="center", vertical="middle"),
         title="AWS FinOps Dashboard",
@@ -376,6 +475,9 @@ def add_profile_to_table(table: Table, profile_data: ProfileData) -> None:
             f"[bold red]${profile_data['last_month']:.2f}[/]",
             current_month_with_change,
             "[bright_green]"
+            + "\n".join(profile_data["previous_service_costs_formatted"])
+            + "[/]",
+            "[bright_green]"
             + "\n".join(profile_data["service_costs_formatted"])
             + "[/]",
             "[bright_yellow]" + "\n\n".join(profile_data["budget_info"]) + "[/]",
@@ -384,6 +486,7 @@ def add_profile_to_table(table: Table, profile_data: ProfileData) -> None:
     else:
         table.add_row(
             f"[bright_magenta]{profile_data['profile']}[/]",
+            "[red]Error[/]",
             "[red]Error[/]",
             "[red]Error[/]",
             f"[red]Failed to process profile: {profile_data['error']}[/]",
@@ -395,7 +498,7 @@ def add_profile_to_table(table: Table, profile_data: ProfileData) -> None:
 def _generate_dashboard_data(
     profiles_to_use: List[str],
     user_regions: Optional[List[str]],
-    time_range: Optional[int],
+    time_range: Optional[Union[int, str]],
     args: argparse.Namespace,
     table: Table,
 ) -> List[ProfileData]:
@@ -455,22 +558,82 @@ def _export_dashboard_reports(
 ) -> None:
     """Export dashboard data to specified formats."""
     if args.report_name and args.report_type:
+        # Create export handler
+        export_handler = None
+        if args.slack:
+            # Slack export
+            slack_token = os.getenv("SLACK_BOT_TOKEN")
+            if slack_token:
+                console.print(
+                    f"[bright_cyan]Sending reports to Slack channel: {args.slack}[/]"
+                )
+                # Extract profiles from export_data (handle both single and combined profiles)
+                all_profiles = []
+                for data in export_data:
+                    profile_str = data["profile"]
+                    # Split comma-separated profiles (for combined profiles)
+                    profiles = [p.strip() for p in profile_str.split(",")]
+                    all_profiles.extend(profiles)
+                profiles_list = list(set(all_profiles))
+                # Format time period
+                time_period_str = f"{previous_period_dates} → {current_period_dates}"
+                # Generate message for dashboard report
+                slack_msg = generate_slack_message(
+                    report_type="dashboard",
+                    report_name=args.report_name,
+                    profiles=profiles_list,
+                    time_period=time_period_str,
+                )
+                export_handler = ExportHandler(
+                    slack_token=slack_token,
+                    slack_channel=args.slack,
+                    slack_message=slack_msg,
+                )
+            else:
+                console.print(
+                    "[bold red]Error: SLACK_BOT_TOKEN environment variable not found[/]"
+                )
+                return
+        elif args.s3_bucket and args.s3_profile:
+            try:
+                session = boto3.Session(profile_name=args.s3_profile)
+                console.print(
+                    f"[bright_cyan]Using profile '{args.s3_profile}' for S3 upload[/]"
+                )
+                export_handler = ExportHandler(
+                    s3_bucket=args.s3_bucket,
+                    s3_prefix=args.s3_prefix,
+                    session=session,
+                )
+            except Exception as e:
+                console.print(
+                    f"[bold red]Error creating session for S3 upload: {str(e)}[/]"
+                )
+                return
+        else:
+            export_handler = ExportHandler(local_dir=args.dir)
+
         for report_type in args.report_type:
             if report_type == "csv":
                 csv_path = export_to_csv(
                     export_data,
                     args.report_name,
-                    args.dir,
+                    output_dir=args.dir if not args.s3_bucket and not args.slack else None,
                     previous_period_dates=previous_period_dates,
                     current_period_dates=current_period_dates,
+                    export_handler=export_handler,
                 )
-                if csv_path:
+                if csv_path and not args.s3_bucket and not args.slack:
                     console.print(
                         f"[bright_green]Successfully exported to CSV format: {csv_path}[/]"
                     )
             elif report_type == "json":
-                json_path = export_to_json(export_data, args.report_name, args.dir)
-                if json_path:
+                json_path = export_to_json(
+                    export_data, args.report_name,
+                    output_dir=args.dir if not args.s3_bucket and not args.slack else None,
+                    export_handler=export_handler,
+                )
+                if json_path and not args.s3_bucket and not args.slack:
                     console.print(
                         f"[bright_green]Successfully exported to JSON format: {json_path}[/]"
                     )
@@ -478,11 +641,12 @@ def _export_dashboard_reports(
                 pdf_path = export_cost_dashboard_to_pdf(
                     export_data,
                     args.report_name,
-                    args.dir,
+                    output_dir=args.dir if not args.s3_bucket and not args.slack else None,
                     previous_period_dates=previous_period_dates,
                     current_period_dates=current_period_dates,
+                    export_handler=export_handler,
                 )
-                if pdf_path:
+                if pdf_path and not args.s3_bucket and not args.slack:
                     console.print(
                         f"[bright_green]Successfully exported to PDF format: {pdf_path}[/]"
                     )

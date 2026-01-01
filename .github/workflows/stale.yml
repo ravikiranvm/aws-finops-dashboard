@@ -1,0 +1,125 @@
+name: Close stale issues and PRs
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Run in dry-run mode (no issues or PRs will be labelled or closed)'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - id: stale
+        uses: actions/stale@v10
+        with:
+          debug-only: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs['dry-run'] == 'true') || 'false' }}
+
+          days-before-issue-stale: 60
+          days-before-issue-close: 5
+
+          days-before-pr-stale: 30
+          days-before-pr-close: 5
+
+          stale-issue-label: 'stale'
+          stale-issue-message: >
+            This issue has been automatically marked as stale because it has not had
+            activity in the last 60 days. It will be closed in 5 days if no further activity occurs. 
+            Please feel free to leave a comment if you believe the issue is still relevant.
+            Thank you for your contributions!
+
+          stale-pr-label: 'stale'
+          stale-pr-message: >
+            This pull request has been automatically marked as stale because it has not had
+            activity in the last 30 days. It will be closed in 5 days if no further activity occurs. 
+            Please feel free to give a status update by leaving a comment. 
+            Thank you for your contributions!
+
+          close-issue-message: >
+            This issue has been automatically closed because it has not had any further
+            activity in the last 5 days. Thank you for your contributions!
+          close-pr-message: >
+            This pull request has been automatically closed because it has not had any further
+            activity in the last 5 days. Thank you for your contributions!
+
+          operations-per-run: 200
+
+      - name: Notify Slack (only if items changed)
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          STALE_LIST: ${{ steps.stale.outputs.staled-issues-prs }}
+          CLOSED_LIST: ${{ steps.stale.outputs.closed-issues-prs }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs['dry-run'] == 'true') && 'true' || 'false' }}
+        run: |
+          set -euo pipefail
+
+          stale_total=$(echo "${STALE_LIST:-[]}" | jq 'length')
+          closed_total=$(echo "${CLOSED_LIST:-[]}" | jq 'length')
+
+          if [ "$stale_total" -eq 0 ] && [ "$closed_total" -eq 0 ]; then
+            echo "No staled/closed items; skipping Slack."
+            exit 0
+          fi
+
+          stale_lines=""
+          if [ "$stale_total" -gt 0 ]; then
+            stale_lines=$(echo "${STALE_LIST:-[]}" | jq -r --arg repo "$REPO" '
+              map(if has("pull_request")
+                  then "• Pull Request <https://github.com/\($repo)/pull/\(.number)|#\(.number)>"
+                  else "• Issue <https://github.com/\($repo)/issues/\(.number)|#\(.number)>"
+                  end) | .[]')
+          fi
+
+          closed_lines=""
+          if [ "$closed_total" -gt 0 ]; then
+            closed_lines=$(echo "${CLOSED_LIST:-[]}" | jq -r --arg repo "$REPO" '
+              map(if has("pull_request")
+                  then "• Pull Request <https://github.com/\($repo)/pull/\(.number)|#\(.number)>"
+                  else "• Issue <https://github.com/\($repo)/issues/\(.number)|#\(.number)>"
+                  end) | .[]')
+          fi
+
+          header=":broom: *Stale sweep in* \`${REPO}\`"
+          if [ "$DRY_RUN" = "true" ]; then
+            header="$header (DRY RUN)"
+          fi
+
+          body="$header"
+          if [ "$stale_total" -gt 0 ]; then
+            body="$body"$'\n'"*Staled:* ${stale_total}"$'\n'"${stale_lines}"
+          fi
+          if [ "$closed_total" -gt 0 ]; then
+            body="$body"$'\n'"*Closed:* ${closed_total}"$'\n'"${closed_lines}"
+          fi
+
+          export BODY="$body"
+
+          python - <<'PY' > payload.json
+          import json, os
+          body_text = os.environ.get("BODY", "")
+          payload = {
+            "blocks": [
+              {"type": "section", "text": {"type": "mrkdwn", "text": body_text}}
+            ]
+          }
+          print(json.dumps(payload))
+          PY
+
+          if curl --fail --silent --show-error -X POST -H 'Content-type: application/json' \
+               --data @payload.json \
+               "$SLACK_WEBHOOK_URL"; then
+            echo "Notification sent successfully."
+          else
+            echo "Failed to send notification."
+            exit 1
+          fi
