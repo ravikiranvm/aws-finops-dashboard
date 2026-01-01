@@ -149,19 +149,18 @@ def get_cost_data(
 
     if time_range == "last-month":
         # Current period is the previous calendar month
-        current_month_start = today.replace(day=1)
-        end_date = current_month_start - timedelta(days=1)
-        start_date = end_date.replace(day=1)
+        end_date = today.replace(day=1)
+        start_date = (end_date - timedelta(days=1)).replace(day=1)
 
         # Previous period is the month before last
-        previous_period_end = start_date - timedelta(days=1)
-        previous_period_start = previous_period_end.replace(day=1)
+        previous_period_end = start_date
+        previous_period_start = (start_date - timedelta(days=1)).replace(day=1)
 
     elif time_range:
         end_date = today
         start_date = today - timedelta(days=time_range)
-        previous_period_end = start_date - timedelta(days=1)
-        previous_period_start = previous_period_end - timedelta(days=time_range)
+        previous_period_end = start_date
+        previous_period_start = (start_date - timedelta(days=time_range))
 
     else:
         start_date = today.replace(day=1)
@@ -172,8 +171,8 @@ def get_cost_data(
             end_date += timedelta(days=1)
 
         # Last calendar month
-        previous_period_end = start_date - timedelta(days=1)
-        previous_period_start = previous_period_end.replace(day=1)
+        previous_period_end = start_date
+        previous_period_start = (start_date - timedelta(days=1)).replace(day=1)
 
     account_id = get_account_id(session)
 
@@ -309,9 +308,9 @@ def get_cost_data(
         "previous_period_name": previous_period_name,
         "time_range": time_range,
         "current_period_start": start_date.isoformat(),
-        "current_period_end": end_date.isoformat(),
+        "current_period_end": (end_date - timedelta(days=1)).isoformat(),
         "previous_period_start": previous_period_start.isoformat(),
-        "previous_period_end": previous_period_end.isoformat(),
+        "previous_period_end": (previous_period_end - timedelta(days=1)).isoformat(),
         "monthly_costs": None,
     }
 
@@ -383,7 +382,6 @@ def change_in_total_cost(
             return 0.00  # No change if both periods are zero
         return None  # Undefined percentage change if previous is zero but current is non-zero
 
-    # Calculate percentage change
     return ((current_period - previous_period) / previous_period) * 100.00
 
 
