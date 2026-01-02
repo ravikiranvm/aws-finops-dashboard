@@ -9,6 +9,7 @@ authors = [{name = "Ravi Kiran Vallamkonda"}]
 dependencies = [
     "boto3>=1.37.28",
     "rich>=14.0.0",
+    "typer>=0.9.0",
     "requests>=2.0.0",
     "packaging>=21.0",
     "reportlab>=3.6.1",
@@ -23,7 +24,7 @@ keywords = ["aws", "finops", "dashboard", "cli", "cloud", "cost"]
 "Source" = "https://github.com/ravikiranvm/aws-finops-dashboard"
 
 [project.scripts]
-aws-finops = "aws_finops_dashboard.cli:main"
+aws-finops = "aws_finops_dashboard.cli:cli_main"
 
 [build-system]
 requires = ["hatchling"]
