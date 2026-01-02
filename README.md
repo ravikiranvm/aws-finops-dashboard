@@ -24,8 +24,35 @@ Key features include:
 * **Slack Integration:** You can send your cost and audit reports to your Slack workspace in CSV/PDF/JSON formats.
 ![alt text](slack-export.png)
 
+## Quick Start
+
+Get up and running in under a minute:
+
+```bash
+# Install
+pipx install aws-finops-dashboard
+
+# View cost dashboard for your default AWS profile
+aws-finops --region us-east-1
+
+# View cost dashboard for specific profiles
+aws-finops --profiles dev prod --region us-east-1
+
+# View cost trends for the last 6 months
+aws-finops --trend
+
+# Run a FinOps audit
+aws-finops --audit --region us-east-1
+
+# Export to PDF
+aws-finops --report-name my_report --report-type pdf
+```
+
+---
+
 ## Table of Contents
 
+- [Quick Start](#quick-start)
 - [Features](#features)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
@@ -66,11 +93,11 @@ Key features include:
   - CSV export with `--report-name` and `--report-type csv`
   - JSON export with `--report-name` and `--report-type json`
   - PDF export with `--report-name` and `--report-type pdf`
-  - Export to both CSV and JSON formats with `--report-name` and `--report-type csv json`
+  - Export to multiple formats with `--report-name` and `--report-type csv json pdf`
   - Specify output directory using `--dir`
   - Export to S3 with `--s3-bucket` and `--s3-profile`
   - Export to Slack channel with `--slack` (requires `SLACK_BOT_TOKEN` environment variable)
-  - **Note**: Trend reports (generated via `--trend`) currently only support JSON export. Other formats specified in `--report-type` will be ignored for these reports.
+  - **Note**: Trend reports (generated via `--trend`) currently only support JSON export. Other formats specified in `--report-type` will be ignored for trend reports.
 - **Improved Error Handling**: Resilient and user-friendly error messages
 - **Beautiful Terminal UI**: Styled with the Rich library for a visually appealing experience
 
@@ -86,7 +113,6 @@ Key features include:
   - `ec2:DescribeInstances`
   - `ec2:DescribeRegions`
   - `sts:GetCallerIdentity`
-  - `ec2:DescribeInstances`
   - `ec2:DescribeVolumes`
   - `ec2:DescribeAddresses`
   - `rds:DescribeDBInstances`
@@ -228,11 +254,11 @@ aws-finops [options]
 | `--combine`, `-c` | Combine profiles from the same AWS account into single rows. |
 | `--tag`, `-g` | Filter cost data by one or more cost allocation tags in `Key=Value` format. Example: `--tag Team=DevOps Env=Prod` |
 | `--report-name`, `-n` | Specify the base name for the report file (without extension). |
-| `--report-type`, `-y` | Specify report types (space-separated): 'csv', 'json', 'pdf'. For reports generated with `--audit`, only 'pdf' is applicable and other types will be ignored. |
+| `--report-type`, `-y` | Specify report types (space-separated): 'csv', 'json', 'pdf'. All formats are supported for both cost dashboard and audit reports. For trend reports, only 'json' is supported. |
 | `--dir`, `-d` | Directory to save the report file(s) (default: current directory). |
 | `--time-range`, `-t` | Time range for cost data in days (default: current month). Examples: 7, 30, 90. Use `last-month` to query the previous calendar month. |
 | `--trend` | View cost trend analysis for the last 6 months. |
-| `--audit` | View list of untagged, unused resoruces and budget breaches. |
+| `--audit` | View list of untagged, unused resources and budget breaches. |
 | `--s3-bucket`, `-s3` | S3 bucket name to export report files to. When specified, files are uploaded to S3 instead of saving locally. Requires `--s3-profile`. |
 | `--s3-prefix`, `-s3p` | S3 key prefix/folder path for report files (optional). Example: `reports/2025/january` |
 | `--s3-profile`, `-s3s` | AWS CLI profile to use for S3 uploads. Required when `--s3-bucket` is specified. |
@@ -325,9 +351,9 @@ profiles = ["dev-profile", "prod-profile"]
 regions = ["us-east-1", "eu-west-2"]
 combine = true
 report_name = "monthly_finops_summary"
-report_type = ["csv", "pdf"] # For cost dashboard. For audit, only PDF is used.
+report_type = ["csv", "pdf"] # Supports csv, json, pdf for cost dashboard and audit reports
 dir = "./reports/aws-finops" # Defaults to present working directory
-time_range = 30 # Defaults to 30 days
+time_range = 30 # Number of days (e.g., 7, 30, 90) or "last-month" for previous calendar month
 tag = ["CostCenter=Alpha", "Project=Phoenix"] # Optional
 audit = false # Set to true to run audit report by default
 trend = false # Set to true to run trend report by default
@@ -351,9 +377,9 @@ combine: true
 report_name: "monthly_finops_summary"
 report_type:
   - csv
-  - pdf # For cost dashboard. For audit, only PDF is used.
+  - pdf # Supports csv, json, pdf for cost dashboard and audit reports
 dir: "./reports/aws-finops"
-time_range: 30
+time_range: 30 # Number of days (e.g., 7, 30, 90) or "last-month" for previous calendar month
 tag:
   - "CostCenter=Alpha"
   - "Project=Phoenix"
@@ -373,9 +399,9 @@ slack: "C1234567890" # Optional: Slack channel ID to send reports to. Requires S
   "regions": ["us-east-1", "eu-west-2"],
   "combine": true,
   "report_name": "monthly_finops_summary",
-  "report_type": ["csv", "pdf"], /* For cost dashboard. For audit, only PDF is used. */
+  "report_type": ["csv", "pdf"], /* Supports csv, json, pdf for cost dashboard and audit reports */
   "dir": "./reports/aws-finops",
-  "time_range": 30,
+  "time_range": 30, /* Number of days (e.g., 7, 30, 90) or "last-month" for previous calendar month */
   "tag": ["CostCenter=Alpha", "Project=Phoenix"],
   "audit": false, /* Set to true to run audit report by default */
   "trend": false, /* Set to true to run trend report by default */
@@ -408,17 +434,24 @@ When exporting to CSV, a file is generated with the following columns:
 
 When exporting to JSON, a structured file is generated that includes all dashboard data in a format that's easy to parse programmatically.
 
-### PDF Output Format (for Audit Report)
+### PDF Output Format
 
-When exporting to PDF, a file is generated with the following columns:
+PDF export is supported for both cost dashboard and audit reports.
 
-- `Profile`
-- `Account ID`
-- `Untagged Resources`
-- `Stopped EC2 Instances`
-- `Unused Volumes`
-- `Unused EIPs`
-- `Budget Alerts`
+**Cost Dashboard PDF** includes:
+- Profile and Account ID
+- Previous and Current Period Costs
+- Cost breakdown by service
+- Budget Status
+- EC2 Instance Summary
+
+**Audit Report PDF** includes:
+- Profile and Account ID
+- Untagged Resources
+- Stopped EC2 Instances
+- Unused Volumes
+- Unused EIPs
+- Budget Alerts
 
 ---
 
@@ -504,9 +537,6 @@ uv run hatch run fmt
 # Run linters
 uv run hatch run lint
 
-# Run tests 
-uv run hatch run test
-
 # Run the tool
 aws-finops
 ```
@@ -516,6 +546,12 @@ aws-finops
 ## Acknowledgments
 
 Special thanks to [cschnidr](https://github.com/cschnidr) & [MKAbuMattar](https://github.com/MKAbuMattar) for their valuable contributions to significantly improve this project!
+
+---
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=ravikiranvm/aws-finops-dashboard&type=Date)](https://star-history.com/#ravikiranvm/aws-finops-dashboard&Date)
 
 ---
 
