@@ -118,6 +118,40 @@ def main() -> int:
         default=["csv"],
     )
     parser.add_argument(
+        "--pdf-style",
+        choices=["legacy", "executive"],
+        default="legacy",
+        help="PDF renderer style to use when exporting PDF reports.",
+        type=str,
+    )
+    parser.add_argument(
+        "--pdf-logo-path",
+        help="Optional path to a logo image for executive PDF reports.",
+        type=str,
+    )
+    parser.add_argument(
+        "--pdf-confidentiality",
+        help="Optional confidentiality text for executive PDF cover pages.",
+        type=str,
+    )
+    parser.add_argument(
+        "--pdf-chart-paths",
+        nargs="+",
+        help="Optional pre-generated chart image paths to embed in executive PDFs.",
+        type=str,
+    )
+    parser.add_argument(
+        "--include-k8s",
+        action="store_true",
+        help="Include Kubernetes cost data from OpenCost when generating reports.",
+    )
+    parser.add_argument(
+        "--opencost-url",
+        default="http://localhost:9003",
+        help="Base URL for the OpenCost API.",
+        type=str,
+    )
+    parser.add_argument(
         "--dir",
         "-d",
         help="Directory to save the report files (default: current directory)",

@@ -61,6 +61,12 @@ class CLIArgs(TypedDict, total=False):
     combine: bool
     report_name: Optional[str]
     report_type: Optional[List[str]]
+    pdf_style: str
+    pdf_logo_path: Optional[str]
+    pdf_confidentiality: Optional[str]
+    pdf_chart_paths: Optional[List[str]]
+    include_k8s: bool
+    opencost_url: Optional[str]
     dir: Optional[str]
     time_range: Optional[Union[int, str]]
 

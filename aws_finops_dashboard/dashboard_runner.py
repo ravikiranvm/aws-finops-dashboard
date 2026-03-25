@@ -26,6 +26,9 @@ from aws_finops_dashboard.cost_processor import (
     get_cost_data,
     get_trend,
 )
+from aws_finops_dashboard.opencost_adapter import OpenCostAdapter
+from aws_finops_dashboard.report_models import KubernetesCostData
+from aws_finops_dashboard.report_models import build_dashboard_report
 from aws_finops_dashboard.helpers import (
     clean_rich_tags,
     export_audit_report_to_pdf,
@@ -265,6 +268,7 @@ def _run_audit_report(profiles_to_use: List[str], args: argparse.Namespace) -> N
                         audit_data, args.report_name,
                         path=args.dir if not args.s3_bucket and not args.slack else None,
                         export_handler=export_handler,
+                        pdf_style=args.pdf_style,
                     )
                     if pdf_path and not args.s3_bucket and not args.slack:
                         console.print(
@@ -555,6 +559,9 @@ def _export_dashboard_reports(
     args: argparse.Namespace,
     previous_period_dates: str,
     current_period_dates: str,
+    previous_period_name: str,
+    current_period_name: str,
+    kubernetes_costs: Optional[KubernetesCostData],
 ) -> None:
     """Export dashboard data to specified formats."""
     if args.report_name and args.report_type:
@@ -632,6 +639,7 @@ def _export_dashboard_reports(
                     export_data, args.report_name,
                     output_dir=args.dir if not args.s3_bucket and not args.slack else None,
                     export_handler=export_handler,
+                    kubernetes_costs=kubernetes_costs,
                 )
                 if json_path and not args.s3_bucket and not args.slack:
                     console.print(
@@ -645,6 +653,13 @@ def _export_dashboard_reports(
                     previous_period_dates=previous_period_dates,
                     current_period_dates=current_period_dates,
                     export_handler=export_handler,
+                    pdf_style=args.pdf_style,
+                    previous_period_name=previous_period_name,
+                    current_period_name=current_period_name,
+                    logo_path=args.pdf_logo_path,
+                    confidentiality_notice=args.pdf_confidentiality,
+                    chart_image_paths=args.pdf_chart_paths,
+                    kubernetes_costs=kubernetes_costs,
                 )
                 if pdf_path and not args.s3_bucket and not args.slack:
                     console.print(
@@ -685,9 +700,87 @@ def run_dashboard(args: argparse.Namespace) -> int:
     export_data = _generate_dashboard_data(
         profiles_to_use, user_regions, time_range, args, table
     )
+    kubernetes_costs = _fetch_kubernetes_costs(args, time_range)
     console.print(table)
+    _print_terminal_insights(
+        export_data=export_data,
+        previous_period_dates=previous_period_dates,
+        current_period_dates=current_period_dates,
+        previous_period_name=previous_period_name,
+        current_period_name=current_period_name,
+        kubernetes_costs=kubernetes_costs,
+    )
     _export_dashboard_reports(
-        export_data, args, previous_period_dates, current_period_dates
+        export_data,
+        args,
+        previous_period_dates,
+        current_period_dates,
+        previous_period_name,
+        current_period_name,
+        kubernetes_costs,
     )
 
     return 0
+
+
+def _fetch_kubernetes_costs(
+    args: argparse.Namespace,
+    time_range: Optional[Union[int, str]],
+) -> Optional[KubernetesCostData]:
+    if not getattr(args, "include_k8s", False):
+        return None
+
+    if not getattr(args, "opencost_url", None):
+        console.print("[yellow]Warning: --include-k8s was used without an OpenCost URL.[/]")
+        return None
+
+    try:
+        adapter = OpenCostAdapter(args.opencost_url)
+        kubernetes_costs = adapter.fetch_costs(_opencost_window_for_time_range(time_range))
+        if kubernetes_costs.warnings:
+            for warning in kubernetes_costs.warnings:
+                console.print(f"[yellow]Kubernetes cost warning: {warning}[/]")
+        return kubernetes_costs
+    except Exception as exc:
+        console.print(
+            f"[yellow]Warning: failed to fetch Kubernetes cost data from OpenCost: {str(exc)}[/]"
+        )
+        return None
+
+
+def _opencost_window_for_time_range(time_range: Optional[Union[int, str]]) -> str:
+    if time_range == "last-month":
+        return "lastmonth"
+    if isinstance(time_range, int) and time_range > 0:
+        return f"{time_range}d"
+    return "month"
+
+
+def _print_terminal_insights(
+    export_data: List[ProfileData],
+    previous_period_dates: str,
+    current_period_dates: str,
+    previous_period_name: str,
+    current_period_name: str,
+    kubernetes_costs: Optional[KubernetesCostData],
+) -> None:
+    report = build_dashboard_report(
+        export_data,
+        previous_period_dates=previous_period_dates,
+        current_period_dates=current_period_dates,
+        previous_period_name=previous_period_name,
+        current_period_name=current_period_name,
+        kubernetes_costs=kubernetes_costs,
+    )
+    if not report.insights:
+        return
+
+    console.print("\n[bold bright_cyan]Executive Insights[/]")
+    for insight in report.insights:
+        color = {
+            "high": "bright_red",
+            "medium": "bright_yellow",
+            "low": "bright_green",
+            "info": "bright_cyan",
+        }.get(insight.severity, "white")
+        console.print(f"[{color}]- {insight.message}[/]")

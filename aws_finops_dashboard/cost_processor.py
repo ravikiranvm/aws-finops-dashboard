@@ -2,6 +2,7 @@ import csv
 import json
 import os
 from collections import defaultdict
+from dataclasses import asdict, is_dataclass
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple, Union
 from io import StringIO
@@ -10,6 +11,7 @@ from boto3.session import Session
 from rich.console import Console
 
 from aws_finops_dashboard.aws_client import get_account_id
+from aws_finops_dashboard.report_models import KubernetesCostData
 from aws_finops_dashboard.types import BudgetInfo, CostData, EC2Summary, ProfileData
 
 console = Console()
@@ -477,6 +479,7 @@ def export_to_json(
     filename: str,
     output_dir: Optional[str] = None,
     export_handler=None,
+    kubernetes_costs: Optional[KubernetesCostData] = None,
 ) -> Optional[str]:
     """Export dashboard data to a JSON file or S3."""
     from aws_finops_dashboard.export_handler import ExportHandler
@@ -485,7 +488,14 @@ def export_to_json(
         timestamp = datetime.now().strftime("%Y%m%d_%H%M")
         base_filename = f"{filename}_{timestamp}.json"
 
-        json_content = json.dumps(data, indent=4).encode("utf-8")
+        payload: Union[List[ProfileData], Dict[str, Any]] = data
+        if kubernetes_costs is not None:
+            payload = {
+                "aws_profiles": data,
+                "kubernetes": _to_jsonable(kubernetes_costs),
+            }
+
+        json_content = json.dumps(payload, indent=4).encode("utf-8")
 
         # Use export handler if provided, otherwise create default
         if export_handler is None:
@@ -498,3 +508,13 @@ def export_to_json(
     except Exception as e:
         console.print(f"[bold red]Error exporting to JSON: {str(e)}[/]")
         return None
+
+
+def _to_jsonable(value: Any) -> Any:
+    if is_dataclass(value):
+        return {key: _to_jsonable(val) for key, val in asdict(value).items()}
+    if isinstance(value, dict):
+        return {key: _to_jsonable(val) for key, val in value.items()}
+    if isinstance(value, list):
+        return [_to_jsonable(item) for item in value]
+    return value

@@ -7,6 +7,8 @@
 
 The AWS FinOps Dashboard is an open-source, Python-based command-line tool (built with the Rich library) for AWS cost monitoring. It provides multi-account cost summaries by time period, service, and cost allocation tags; budget limits vs. actuals; EC2 instance status; six‑month cost trend charts; and “FinOps audit” reports (e.g. untagged or idle resources). It can export data to CSV/JSON/PDF.
 
+The CLI also supports an optional executive PDF mode with enhanced layouts, generated chart assets, lightweight insights, and optional Kubernetes cost integration through OpenCost.
+
 ## Why AWS FinOps Dashboard?
 
 Managing and understanding your AWS expenditure, especially across multiple accounts and services, can be complex. The AWS FinOps Dashboard CLI aims to simplify this by providing a clear, concise, and actionable view of your AWS costs and operational hygiene directly in your terminal.
@@ -46,6 +48,12 @@ aws-finops --audit --region us-east-1
 
 # Export to PDF
 aws-finops --report-name my_report --report-type pdf
+
+# Export an executive PDF
+aws-finops --report-name my_exec_report --report-type pdf --pdf-style executive
+
+# Export an executive PDF with Kubernetes costs from OpenCost
+aws-finops --report-name my_exec_k8s_report --report-type pdf --pdf-style executive --include-k8s --opencost-url http://localhost:9003
 ```
 
 ---
@@ -65,6 +73,7 @@ aws-finops --report-name my_report --report-type pdf
   - [YAML Configuration Example (`config.yaml` or `config.yml`)](#yaml-configuration-example-configyaml-or-configyml)
   - [JSON Configuration Example (`config.json`)](#json-configuration-example-configjson)
 - [Export Formats](#export-formats)
+- [Architecture](#architecture)
 - [Cost For Every Run](#cost-for-every-run)
 - [Contributing](#contributing)
 - [License](#license)
@@ -93,11 +102,20 @@ aws-finops --report-name my_report --report-type pdf
   - CSV export with `--report-name` and `--report-type csv`
   - JSON export with `--report-name` and `--report-type json`
   - PDF export with `--report-name` and `--report-type pdf`
+  - Executive PDF export with `--report-name`, `--report-type pdf`, and `--pdf-style executive`
   - Export to multiple formats with `--report-name` and `--report-type csv json pdf`
   - Specify output directory using `--dir`
   - Export to S3 with `--s3-bucket` and `--s3-profile`
   - Export to Slack channel with `--slack` (requires `SLACK_BOT_TOKEN` environment variable)
   - **Note**: Trend reports (generated via `--trend`) currently only support JSON export. Other formats specified in `--report-type` will be ignored for trend reports.
+- **Executive Report Enhancements**:
+  - Optional executive PDF layout with cover page, KPI cards, chart sections, and appendix
+  - Optional generated or supplied chart assets for executive PDFs
+  - Structured narrative insights in terminal and executive PDF output
+- **Optional Kubernetes Cost Data**:
+  - OpenCost integration with `--include-k8s`
+  - Configurable OpenCost API URL with `--opencost-url`
+  - Kubernetes namespace, workload, and shared or idle cost context in JSON and executive PDF exports
 - **Improved Error Handling**: Resilient and user-friendly error messages
 - **Beautiful Terminal UI**: Styled with the Rich library for a visually appealing experience
 
@@ -255,6 +273,12 @@ aws-finops [options]
 | `--tag`, `-g` | Filter cost data by one or more cost allocation tags in `Key=Value` format. Example: `--tag Team=DevOps Env=Prod` |
 | `--report-name`, `-n` | Specify the base name for the report file (without extension). |
 | `--report-type`, `-y` | Specify report types (space-separated): 'csv', 'json', 'pdf'. All formats are supported for both cost dashboard and audit reports. For trend reports, only 'json' is supported. |
+| `--pdf-style` | PDF renderer style. Use `legacy` for the default report or `executive` for the premium executive layout. |
+| `--pdf-logo-path` | Optional logo image path for executive PDF cover pages. |
+| `--pdf-confidentiality` | Optional confidentiality text shown on executive PDF cover pages. |
+| `--pdf-chart-paths` | Optional list of pre-generated chart image paths to embed in executive PDFs. |
+| `--include-k8s` | Include Kubernetes cost data from OpenCost in dashboard JSON and executive PDF exports. |
+| `--opencost-url` | Base URL for the OpenCost API used when `--include-k8s` is enabled. |
 | `--dir`, `-d` | Directory to save the report file(s) (default: current directory). |
 | `--time-range`, `-t` | Time range for cost data in days (default: current month). Examples: 7, 30, 90. Use `last-month` to query the previous calendar month. |
 | `--trend` | View cost trend analysis for the last 6 months. |
@@ -306,6 +330,18 @@ aws-finops --profiles dev prod --combine --report-name report --report-type csv 
 # Export data to CSV format and upload to S3 bucket
 aws-finops --all --report-name aws_dashboard_data --report-type csv --s3-bucket my-finops-reports --s3-profile prod
 
+# Export a standard PDF cost dashboard
+aws-finops --all --report-name aws_dashboard_pdf --report-type pdf
+
+# Export an executive PDF cost dashboard
+aws-finops --all --report-name aws_dashboard_exec --report-type pdf --pdf-style executive
+
+# Export an executive PDF with custom cover settings
+aws-finops --all --report-name aws_dashboard_exec --report-type pdf --pdf-style executive --pdf-logo-path ./logo.png --pdf-confidentiality "Confidential - Internal Use Only"
+
+# Export an executive PDF with Kubernetes cost data from OpenCost
+aws-finops --all --report-name aws_dashboard_exec_k8s --report-type pdf --pdf-style executive --include-k8s --opencost-url http://localhost:9003
+
 # Export data to PDF and send to Slack channel (requires SLACK_BOT_TOKEN env var)
 export SLACK_BOT_TOKEN=xoxb-your-token-here
 aws-finops --all --report-name monthly_report --report-type pdf --slack channel-id
@@ -352,6 +388,11 @@ regions = ["us-east-1", "eu-west-2"]
 combine = true
 report_name = "monthly_finops_summary"
 report_type = ["csv", "pdf"] # Supports csv, json, pdf for cost dashboard and audit reports
+pdf_style = "executive" # Optional: legacy or executive
+pdf_logo_path = "./branding/logo.png" # Optional: executive PDF cover logo
+pdf_confidentiality = "Confidential - Internal Use Only" # Optional: executive PDF cover text
+include_k8s = true # Optional: include Kubernetes cost data from OpenCost
+opencost_url = "http://localhost:9003" # Optional: OpenCost base URL
 dir = "./reports/aws-finops" # Defaults to present working directory
 time_range = 30 # Number of days (e.g., 7, 30, 90) or "last-month" for previous calendar month
 tag = ["CostCenter=Alpha", "Project=Phoenix"] # Optional
@@ -378,6 +419,11 @@ report_name: "monthly_finops_summary"
 report_type:
   - csv
   - pdf # Supports csv, json, pdf for cost dashboard and audit reports
+pdf_style: "executive" # Optional: legacy or executive
+pdf_logo_path: "./branding/logo.png" # Optional: executive PDF cover logo
+pdf_confidentiality: "Confidential - Internal Use Only" # Optional: executive PDF cover text
+include_k8s: true # Optional: include Kubernetes cost data from OpenCost
+opencost_url: "http://localhost:9003" # Optional: OpenCost base URL
 dir: "./reports/aws-finops"
 time_range: 30 # Number of days (e.g., 7, 30, 90) or "last-month" for previous calendar month
 tag:
@@ -400,6 +446,11 @@ slack: "C1234567890" # Optional: Slack channel ID to send reports to. Requires S
   "combine": true,
   "report_name": "monthly_finops_summary",
   "report_type": ["csv", "pdf"], /* Supports csv, json, pdf for cost dashboard and audit reports */
+  "pdf_style": "executive",
+  "pdf_logo_path": "./branding/logo.png",
+  "pdf_confidentiality": "Confidential - Internal Use Only",
+  "include_k8s": true,
+  "opencost_url": "http://localhost:9003",
   "dir": "./reports/aws-finops",
   "time_range": 30, /* Number of days (e.g., 7, 30, 90) or "last-month" for previous calendar month */
   "tag": ["CostCenter=Alpha", "Project=Phoenix"],
@@ -434,6 +485,13 @@ When exporting to CSV, a file is generated with the following columns:
 
 When exporting to JSON, a structured file is generated that includes all dashboard data in a format that's easy to parse programmatically.
 
+When `--include-k8s` is enabled and OpenCost is reachable, the JSON export also includes a Kubernetes section with:
+- total cluster cost
+- namespace costs
+- workload costs
+- idle, shared, and unallocated costs when available
+- OpenCost warnings when data is partial or unavailable
+
 ### PDF Output Format
 
 PDF export is supported for both cost dashboard and audit reports.
@@ -445,6 +503,15 @@ PDF export is supported for both cost dashboard and audit reports.
 - Budget Status
 - EC2 Instance Summary
 
+**Executive PDF** includes:
+- Cover page with optional logo and confidentiality text
+- KPI summary cards and structured insights
+- Generated or supplied chart sections
+- Cost breakdown by account or project
+- Top services by cost
+- Optional Kubernetes cost section when `--include-k8s` is enabled
+- Appendix with detailed AWS and Kubernetes context
+
 **Audit Report PDF** includes:
 - Profile and Account ID
 - Untagged Resources
@@ -452,6 +519,24 @@ PDF export is supported for both cost dashboard and audit reports.
 - Unused Volumes
 - Unused EIPs
 - Budget Alerts
+
+## Architecture
+
+The reporting flow has three main stages:
+
+1. AWS data collection
+   - The CLI resolves profiles and regions, then collects AWS Cost Explorer, Budgets, and EC2 inventory data.
+   - Profile and account data are normalized into internal dashboard report models before export.
+
+2. OpenCost integration
+   - When `--include-k8s` is enabled, the CLI calls OpenCost using the configured `--opencost-url`.
+   - Kubernetes totals, namespace costs, workload costs, and idle or shared or unallocated values are normalized into internal Kubernetes report models.
+   - If OpenCost is unavailable, AWS reporting continues and a warning is shown instead of failing the run.
+
+3. PDF rendering pipeline
+   - Export handlers resolve the output destination.
+   - Executive reports can generate chart PNGs in a temporary directory before PDF rendering.
+   - The renderer layer selects either the legacy PDF layout or the executive layout, then builds the final ReportLab document from normalized report models and structured insights.
 
 ---
 

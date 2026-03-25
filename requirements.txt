@@ -11,6 +11,7 @@ six==1.17.0
 urllib3==2.3.0
 requests>=2.0.0
 packaging>=21.0
+matplotlib>=3.8.0
 reportlab>=3.6.1
 pyyaml==6.0.2
 tomli>=2.2.1
