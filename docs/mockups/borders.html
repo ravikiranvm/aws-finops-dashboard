@@ -1,0 +1,338 @@
+<title>finops v3 &mdash; Border treatments</title>
+<style>
+:root {
+  --text:#1f2328; --dim:#656d76; --accent:#0969da; --positive:#1a7f37;
+  --negative:#cf222e; --warning:#9a6700; --border:#d0d7de;
+  --sel-bg:#fff1e5; --sel-fg:#bc4c00; --terminal-bg:#ffffff; --page-bg:#f6f8fa;
+  --shadow:0 1px 2px rgba(31,35,40,.08), 0 8px 24px rgba(31,35,40,.08);
+  --chrome:#f6f8fa;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text:#e6edf3; --dim:#8b949e; --accent:#79c0ff; --positive:#3fb950;
+    --negative:#f85149; --warning:#d29922; --border:#30363d;
+    --sel-bg:#3d2a12; --sel-fg:#ffa657; --terminal-bg:#0d1117; --page-bg:#010409;
+    --shadow:0 1px 2px rgba(1,4,9,.6), 0 8px 24px rgba(1,4,9,.5);
+    --chrome:#161b22;
+  }
+}
+:root[data-theme="dark"] {
+  --text:#e6edf3; --dim:#8b949e; --accent:#79c0ff; --positive:#3fb950;
+  --negative:#f85149; --warning:#d29922; --border:#30363d;
+  --sel-bg:#3d2a12; --sel-fg:#ffa657; --terminal-bg:#0d1117; --page-bg:#010409;
+  --shadow:0 1px 2px rgba(1,4,9,.6), 0 8px 24px rgba(1,4,9,.5);
+  --chrome:#161b22;
+}
+:root[data-theme="light"] {
+  --text:#1f2328; --dim:#656d76; --accent:#0969da; --positive:#1a7f37;
+  --negative:#cf222e; --warning:#9a6700; --border:#d0d7de;
+  --sel-bg:#fff1e5; --sel-fg:#bc4c00; --terminal-bg:#ffffff; --page-bg:#f6f8fa;
+  --shadow:0 1px 2px rgba(31,35,40,.08), 0 8px 24px rgba(31,35,40,.08);
+  --chrome:#f6f8fa;
+}
+
+.page {
+  background: var(--page-bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0;
+  padding: 4rem 1.5rem 6rem;
+  overflow-x: hidden;
+}
+.wrap { max-width: 62rem; margin: 0 auto; }
+
+.eyebrow {
+  font-size: .75rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--dim); margin: 0 0 .75rem;
+}
+h1 {
+  font-size: clamp(1.7rem, 4vw, 2.35rem); line-height: 1.15; font-weight: 600;
+  letter-spacing: -.02em; margin: 0 0 1.25rem; color: var(--text);
+}
+.lede { font-size: 1.0625rem; color: var(--dim); max-width: 46rem; margin: 0 0 .9rem; }
+.lede strong { color: var(--text); font-weight: 600; }
+
+hr.div {
+  border: 0; border-top: 1px solid var(--border);
+  margin: 3.5rem 0 0;
+}
+
+section { margin-top: 3.5rem; }
+.sec-head { display: flex; align-items: baseline; gap: .75rem; flex-wrap: wrap; }
+.sec-tag {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: .7rem; letter-spacing: .1em; color: var(--dim);
+  border: 1px solid var(--border); border-radius: 999px; padding: .15rem .55rem;
+  white-space: nowrap;
+}
+h2 {
+  font-size: 1.3rem; font-weight: 600; letter-spacing: -.01em;
+  margin: 0; color: var(--text);
+}
+.pill {
+  font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; font-weight: 600;
+  color: var(--positive); border: 1px solid var(--positive); border-radius: 999px;
+  padding: .1rem .5rem;
+}
+.caption {
+  color: var(--dim); max-width: 44rem; margin: .6rem 0 1.5rem; font-size: .9375rem;
+}
+.sub {
+  color: var(--dim); font-size: .8125rem; margin: 1.75rem 0 .6rem;
+  letter-spacing: .06em; text-transform: uppercase;
+}
+
+/* ---- terminal window ---- */
+.win {
+  background: var(--terminal-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin: 0 0 1.25rem;
+}
+.win-bar {
+  display: flex; align-items: center; gap: .4rem;
+  padding: .5rem .75rem;
+  background: var(--chrome);
+  border-bottom: 1px solid var(--border);
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); flex: none; }
+.win-name {
+  margin-left: .5rem;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: .6875rem; color: var(--dim); letter-spacing: .04em;
+}
+.term { overflow-x: auto; padding: 1rem 1.15rem 1.15rem; }
+pre.tty {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: pre;
+  tab-size: 4;
+}
+@media (max-width: 640px) { pre.tty { font-size: 11px; } }
+
+.dim { color: var(--dim); }
+.bx  { color: var(--border); }
+.pos { color: var(--positive); }
+.neg { color: var(--negative); }
+.warn{ color: var(--warning); }
+.key { color: var(--accent); }
+.sel { background: var(--sel-bg); color: var(--sel-fg); }
+.sel .dim, .sel .pos, .sel .warn, .sel .key { color: inherit; }
+
+/* ---- tradeoffs ---- */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem; }
+@media (max-width: 720px) { .cols { grid-template-columns: 1fr; } }
+.card {
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 1.15rem 1.25rem 1.25rem; background: var(--terminal-bg);
+}
+.card h3 {
+  margin: 0 0 .75rem; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase;
+  font-weight: 600;
+}
+.card.gain h3 { color: var(--positive); }
+.card.cost h3 { color: var(--negative); }
+.card ul { margin: 0; padding-left: 1.1rem; }
+.card li { margin: 0 0 .5rem; font-size: .9375rem; color: var(--text); }
+.card li:last-child { margin-bottom: 0; }
+.card li span { color: var(--dim); }
+.verdict {
+  margin-top: 1.5rem; padding: .9rem 1.1rem;
+  border-left: 3px solid var(--accent); background: var(--terminal-bg);
+  border-radius: 0 6px 6px 0; font-size: .9375rem;
+}
+.verdict strong { color: var(--accent); font-weight: 600; }
+</style>
+<div class="page"><div class="wrap">
+
+<p class="eyebrow">Design review &middot; TUI framing</p>
+<h1>finops v3 &mdash; Border treatments</h1>
+<p class="lede">These mockups compare <strong>bordered</strong> and <strong>borderless</strong>
+framing for the audit screens. Now that the TUI runs in the terminal's alternate screen, it owns
+the whole display &mdash; there is no scrollback above it and no shell prompt below it, so the
+question of where the application begins and ends is ours to answer rather than the terminal's.</p>
+<p class="lede">The tradeoff under evaluation: a border states the app's bounds unambiguously,
+but it spends 2 of the 80 columns and roughly 1 of the 24 rows we are designing against
+&mdash; and that budget is already tight for the impact column.</p>
+
+<hr class="div">
+
+<section>
+  <div class="sec-head"><span class="sec-tag">A</span><h2>Current: borderless</h2></div>
+  <p class="caption">What ships today. Content runs edge to edge and the horizontal rules do all
+  the structural work; the screen's boundary is wherever the terminal's own edge happens to be.</p>
+  <div class="win"><div class="win-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="win-name">audit &mdash; 80&#215;24</span></div><div class="term"><pre class="tty">  finops 3.0<span class="dim">  ·  </span><span class="dim">audit</span>                                      <span class="dim">prod-mgmt · org 14</span>  
+
+  6 of 7 audits run
+
+  <span class="dim">    AUDIT                                    </span><span class="dim">FOUND</span>  <span class="dim">LAST RUN    </span><span class="dim">      IMPACT</span>  
+<span class="dim">  ▾ WASTE</span>                                                             <span class="dim">4 audits</span>  
+<span class="sel">      Unattached EBS volumes                       8  26m ago          $890/mo  </span>
+      Stopped EC2 with attached EBS               12  <span class="dim">26m ago     </span><span class="pos">     $537/mo</span><span class="warn">  </span>
+      Orphaned EBS snapshots                      23  <span class="dim">26m ago     </span><span class="pos">     $312/mo</span><span class="warn">  </span>
+      Unassociated Elastic IPs                     3  <span class="dim">26m ago     </span><span class="pos">     $108/mo</span><span class="warn">  </span>
+<span class="dim">  ▾ RATE</span>                                                               <span class="dim">1 audit</span>  
+      gp2 volumes that could be gp3               23  <span class="dim">26m ago     </span><span class="pos">     $314/mo</span><span class="warn">  </span>
+<span class="dim">  ▾ ALLOCATION</span>                                                         <span class="dim">1 audit</span>  
+      Untagged resources                         312  <span class="dim">3d ago      </span><span class="warn">  $26,410/mo</span><span class="warn"> ⚠</span>
+<span class="dim">  ▾ POLICY</span>                                                             <span class="dim">1 audit</span>  
+      Budgets over their limit                 <span class="dim">     </span>  <span class="dim">never       </span><span class="dim">           —</span><span class="warn">  </span>
+
+  <span class="bx">────────────────────────────────────────────────────────────────────────────</span>
+  Unattached EBS volumes<span class="dim"> · </span>Waste<span class="dim"> · </span><span class="dim">exact basis</span>
+  <span class="dim">Volumes sitting in the 'available' state, billing at the full per-GB rate.</span>
+  <span class="bx">────────────────────────────────────────────────────────────────────────────</span>
+  <span class="key">↑↓</span><span class="dim"> move</span><span class="dim"> · </span><span class="key">space</span><span class="dim"> expand</span><span class="dim"> · </span><span class="key">↵</span><span class="dim"> results</span><span class="dim"> · </span><span class="key">r</span><span class="dim"> run</span><span class="dim"> · </span><span class="key">?</span><span class="dim"> help</span><span class="dim"> · </span><span class="key">q</span><span class="dim"> quit</span></pre></div></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-tag">B</span><h2>Outer border, title in the frame</h2>
+  <span class="pill">Recommended</span></div>
+  <p class="caption">One frame around everything. The header text sits inside the top rule and the
+  section dividers become <span class="sec-tag">&#9500;&#9472;&#9508;</span> tees, so the whole
+  screen reads as a single object at the cost of two columns.</p>
+  <div class="win"><div class="win-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="win-name">audit &mdash; 80&#215;24</span></div><div class="term"><pre class="tty"><span class="bx">┌─ </span><span class="dim">finops 3.0 · audit</span> <span class="bx">────────────────────────────────────</span> <span class="dim">prod-mgmt · org 14</span><span class="bx"> ─┐</span>
+<span class="bx">│</span>                                                                              <span class="bx">│</span>
+<span class="bx">│</span>  6 of 7 audits run                                                           <span class="bx">│</span>
+<span class="bx">│</span>                                                                              <span class="bx">│</span>
+<span class="bx">│</span>  <span class="dim">    AUDIT                                  </span><span class="dim">FOUND</span>  <span class="dim">LAST RUN    </span><span class="dim">      IMPACT</span>  <span class="bx">│</span>
+<span class="bx">│</span><span class="dim">  ▾ WASTE</span>                                                           <span class="dim">4 audits</span>  <span class="bx">│</span>
+<span class="bx">│</span><span class="sel">      Unattached EBS volumes                     8  26m ago          $890/mo  </span><span class="bx">│</span>
+<span class="bx">│</span>      Stopped EC2 with attached EBS             12  <span class="dim">26m ago     </span><span class="pos">     $537/mo</span><span class="warn">  </span><span class="bx">│</span>
+<span class="bx">│</span>      Orphaned EBS snapshots                    23  <span class="dim">26m ago     </span><span class="pos">     $312/mo</span><span class="warn">  </span><span class="bx">│</span>
+<span class="bx">│</span>      Unassociated Elastic IPs                   3  <span class="dim">26m ago     </span><span class="pos">     $108/mo</span><span class="warn">  </span><span class="bx">│</span>
+<span class="bx">│</span><span class="dim">  ▾ RATE</span>                                                             <span class="dim">1 audit</span>  <span class="bx">│</span>
+<span class="bx">│</span>      gp2 volumes that could be gp3             23  <span class="dim">26m ago     </span><span class="pos">     $314/mo</span><span class="warn">  </span><span class="bx">│</span>
+<span class="bx">│</span><span class="dim">  ▾ ALLOCATION</span>                                                       <span class="dim">1 audit</span>  <span class="bx">│</span>
+<span class="bx">│</span>      Untagged resources                       312  <span class="dim">3d ago      </span><span class="warn">  $26,410/mo</span><span class="warn"> ⚠</span><span class="bx">│</span>
+<span class="bx">│</span><span class="dim">  ▾ POLICY</span>                                                           <span class="dim">1 audit</span>  <span class="bx">│</span>
+<span class="bx">│</span>      Budgets over their limit               <span class="dim">     </span>  <span class="dim">never       </span><span class="dim">           —</span><span class="warn">  </span><span class="bx">│</span>
+<span class="bx">│</span>                                                                              <span class="bx">│</span>
+<span class="bx">├──────────────────────────────────────────────────────────────────────────────┤</span>
+<span class="bx">│</span>  Unattached EBS volumes<span class="dim"> · </span>Waste<span class="dim"> · </span><span class="dim">exact basis</span>                                <span class="bx">│</span>
+<span class="bx">│</span>  <span class="dim">Volumes in the 'available' state, billing at full per-GB rate.</span>              <span class="bx">│</span>
+<span class="bx">├──────────────────────────────────────────────────────────────────────────────┤</span>
+<span class="bx">│</span>  <span class="key">↑↓</span><span class="dim"> move</span><span class="dim"> · </span><span class="key">space</span><span class="dim"> expand</span><span class="dim"> · </span><span class="key">↵</span><span class="dim"> results</span><span class="dim"> · </span><span class="key">r</span><span class="dim"> run</span><span class="dim"> · </span><span class="key">?</span><span class="dim"> help</span><span class="dim"> · </span><span class="key">q</span><span class="dim"> quit</span>                <span class="bx">│</span>
+<span class="bx">└──────────────────────────────────────────────────────────────────────────────┘</span></pre></div></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-tag">C</span><h2>Heavy: bordered sections</h2></div>
+  <p class="caption">Header, content and footer each in their own box. Six of twenty-four rows go
+  to border characters alone, the three frames compete for the eye rather than nesting, and the
+  repeated corners read as clutter instead of structure. Rejected.</p>
+  <div class="win"><div class="win-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="win-name">audit &mdash; 80&#215;24</span></div><div class="term"><pre class="tty"><span class="bx">┌──────────────────────────────────────────────────────────────────────────────┐</span>
+<span class="bx">│</span>  finops 3.0<span class="dim">  ·  </span><span class="dim">audit</span>                                    <span class="dim">prod-mgmt · org 14</span>  <span class="bx">│</span>
+<span class="bx">└──────────────────────────────────────────────────────────────────────────────┘</span>
+<span class="bx">┌──────────────────────────────────────────────────────────────────────────────┐</span>
+<span class="bx">│</span>                                                                              <span class="bx">│</span>
+<span class="bx">│</span>  6 of 7 audits run                                                           <span class="bx">│</span>
+<span class="bx">│</span>                                                                              <span class="bx">│</span>
+<span class="bx">│</span>  <span class="dim">    AUDIT                                  </span><span class="dim">FOUND</span>  <span class="dim">LAST RUN    </span><span class="dim">      IMPACT</span>  <span class="bx">│</span>
+<span class="bx">│</span><span class="dim">  ▾ WASTE</span>                                                           <span class="dim">4 audits</span>  <span class="bx">│</span>
+<span class="bx">│</span><span class="sel">      Unattached EBS volumes                     8  26m ago          $890/mo  </span><span class="bx">│</span>
+<span class="bx">│</span>      Stopped EC2 with attached EBS             12  <span class="dim">26m ago     </span><span class="pos">     $537/mo</span><span class="warn">  </span><span class="bx">│</span>
+<span class="bx">│</span>      Orphaned EBS snapshots                    23  <span class="dim">26m ago     </span><span class="pos">     $312/mo</span><span class="warn">  </span><span class="bx">│</span>
+<span class="bx">│</span>      Unassociated Elastic IPs                   3  <span class="dim">26m ago     </span><span class="pos">     $108/mo</span><span class="warn">  </span><span class="bx">│</span>
+<span class="bx">│</span><span class="dim">  ▾ RATE</span>                                                             <span class="dim">1 audit</span>  <span class="bx">│</span>
+<span class="bx">│</span>      gp2 volumes that could be gp3             23  <span class="dim">26m ago     </span><span class="pos">     $314/mo</span><span class="warn">  </span><span class="bx">│</span>
+<span class="bx">│</span><span class="dim">  ▾ ALLOCATION</span>                                                       <span class="dim">1 audit</span>  <span class="bx">│</span>
+<span class="bx">│</span>      Untagged resources                       312  <span class="dim">3d ago      </span><span class="warn">  $26,410/mo</span><span class="warn"> ⚠</span><span class="bx">│</span>
+<span class="bx">│</span><span class="dim">  ▾ POLICY</span>                                                           <span class="dim">1 audit</span>  <span class="bx">│</span>
+<span class="bx">│</span>      Budgets over their limit               <span class="dim">     </span>  <span class="dim">never       </span><span class="dim">           —</span><span class="warn">  </span><span class="bx">│</span>
+<span class="bx">│</span>                                                                              <span class="bx">│</span>
+<span class="bx">├──────────────────────────────────────────────────────────────────────────────┤</span>
+<span class="bx">│</span>  Unattached EBS volumes<span class="dim"> · </span>Waste<span class="dim"> · </span><span class="dim">exact basis</span>                                <span class="bx">│</span>
+<span class="bx">│</span>  <span class="dim">Volumes in the 'available' state, billing at full per-GB rate.</span>              <span class="bx">│</span>
+<span class="bx">└──────────────────────────────────────────────────────────────────────────────┘</span>
+<span class="bx">┌──────────────────────────────────────────────────────────────────────────────┐</span>
+<span class="bx">│</span>  <span class="key">↑↓</span><span class="dim"> move</span><span class="dim"> · </span><span class="key">space</span><span class="dim"> expand</span><span class="dim"> · </span><span class="key">↵</span><span class="dim"> results</span><span class="dim"> · </span><span class="key">r</span><span class="dim"> run</span><span class="dim"> · </span><span class="key">?</span><span class="dim"> help</span><span class="dim"> · </span><span class="key">q</span><span class="dim"> quit</span>                <span class="bx">│</span>
+<span class="bx">└──────────────────────────────────────────────────────────────────────────────┘</span></pre></div></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-tag">D</span><h2>Bordered results and detail screens</h2></div>
+  <p class="caption">The recommended frame carried through the rest of the flow. The breadcrumb
+  extends in the top rule, so the frame absorbs navigation state for free.</p>
+  <p class="sub">Results</p>
+  <div class="win"><div class="win-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="win-name">results &mdash; 80&#215;24</span></div><div class="term"><pre class="tty"><span class="bx">┌─ </span><span class="dim">finops 3.0 · audit › gp2 → gp3</span> <span class="bx">────────────────────────</span> <span class="dim">prod-mgmt · org 14</span><span class="bx"> ─┐</span>
+<span class="bx">│</span>                                                                              <span class="bx">│</span>
+<span class="bx">│</span>  1 finding<span class="dim"> · </span><span class="pos">$0.19/month</span>                                                     <span class="bx">│</span>
+<span class="bx">│</span>  gp2 volumes that could be gp3<span class="dim"> · </span><span class="dim">exact basis</span>                                 <span class="bx">│</span>
+<span class="bx">│</span>                                                                              <span class="bx">│</span>
+<span class="bx">│</span>    <span class="dim">RESOURCE                </span><span class="dim">REGION              </span><span class="dim">    SIZE</span><span class="dim">    TYPE</span><span class="dim">      $/MO</span>    <span class="bx">│</span>
+<span class="bx">│</span><span class="sel">  ▸ vol-0f066ace215f73d98   ap-southeast-1          8 GB     gp2     $0.19    </span><span class="bx">│</span>
+<span class="bx">│</span>                                                                              <span class="bx">│</span>
+<span class="bx">├──────────────────────────────────────────────────────────────────────────────┤</span>
+<span class="bx">│</span>  <span class="key">↑↓</span><span class="dim"> move</span><span class="dim"> · </span><span class="key">↵</span><span class="dim"> detail</span><span class="dim"> · </span><span class="key">r</span><span class="dim"> re-run</span><span class="dim"> · </span><span class="key">esc</span><span class="dim"> back</span><span class="dim"> · </span><span class="key">?</span><span class="dim"> help</span><span class="dim"> · </span><span class="key">q</span><span class="dim"> quit</span>                  <span class="bx">│</span>
+<span class="bx">└──────────────────────────────────────────────────────────────────────────────┘</span></pre></div></div>
+  <p class="sub">Detail</p>
+  <div class="win"><div class="win-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="win-name">detail &mdash; 80&#215;24</span></div><div class="term"><pre class="tty"><span class="bx">┌─ </span><span class="dim">finops 3.0 · audit › gp2 → gp3 › detail</span> <span class="bx">───────────────</span> <span class="dim">prod-mgmt · org 14</span><span class="bx"> ─┐</span>
+<span class="bx">│</span>                                                                              <span class="bx">│</span>
+<span class="bx">│</span>  <span class="dim">FINDING     </span>vol-0f066ace215f73d98<span class="dim"> · </span>8 GB gp2 → gp3                          <span class="bx">│</span>
+<span class="bx">│</span>  <span class="dim">CATEGORY    </span>Rate          <span class="dim">basis </span>exact                                       <span class="bx">│</span>
+<span class="bx">│</span>  <span class="dim">SAVINGS     </span><span class="pos">$0.19 / month</span>                                                   <span class="bx">│</span>
+<span class="bx">│</span>                                                                              <span class="bx">│</span>
+<span class="bx">│</span>  <span class="dim">COMPUTED    </span>gp2 $0.1200 − gp3 $0.0960 = $0.0240 per GB-month                <span class="bx">│</span>
+<span class="bx">│</span>  <span class="dim">            </span>8 GB × $0.0240 = $0.19 per month                                <span class="bx">│</span>
+<span class="bx">│</span>                                                                              <span class="bx">│</span>
+<span class="bx">│</span>  <span class="dim">RESOURCE    </span>vol-0f066ace215f73d98                                           <span class="bx">│</span>
+<span class="bx">│</span>  <span class="dim">REGION      </span>ap-southeast-1                                                  <span class="bx">│</span>
+<span class="bx">│</span>  <span class="dim">ACCOUNT     </span>548846591939                                                    <span class="bx">│</span>
+<span class="bx">│</span>  <span class="dim">OWNER       </span><span class="warn">untagged — no owner</span>                                             <span class="bx">│</span>
+<span class="bx">│</span>                                                                              <span class="bx">│</span>
+<span class="bx">├──────────────────────────────────────────────────────────────────────────────┤</span>
+<span class="bx">│</span>  <span class="key">esc</span><span class="dim"> back</span><span class="dim"> · </span><span class="key">?</span><span class="dim"> help</span><span class="dim"> · </span><span class="key">q</span><span class="dim"> quit</span>                                                  <span class="bx">│</span>
+<span class="bx">└──────────────────────────────────────────────────────────────────────────────┘</span></pre></div></div>
+</section>
+
+<hr class="div">
+
+<section>
+  <div class="sec-head"><h2>Tradeoffs</h2></div>
+  <p class="caption">Weighing option B against option A.</p>
+  <div class="cols">
+    <div class="card gain">
+      <h3>What the border gains</h3>
+      <ul>
+        <li>Defines the app's bounds in the alternate screen <span>&mdash; the frame, not the
+        terminal window, is the edge.</span></li>
+        <li>Reads as a designed application <span>rather than as command output that happens
+        to be interactive.</span></li>
+        <li>Encloses the footer <span>&mdash; the keybinding row is inside the app instead of
+        floating above the shell prompt.</span></li>
+        <li>Absorbs the header and breadcrumb <span>into the top rule, buying back most of the
+        row the frame costs.</span></li>
+        <li>Section tees <span>tie the detail pane to the same structure instead of introducing
+        a second rule style.</span></li>
+      </ul>
+    </div>
+    <div class="card cost">
+      <h3>What the border costs</h3>
+      <ul>
+        <li>2 columns of 80 <span>&mdash; the audit name field drops from 45 to 43
+        characters.</span></li>
+        <li>~1 row of 24 <span>once the bottom rule is paid for; the top rule earns its keep by
+        carrying the title.</span></li>
+        <li>Broken rendering risk <span>on fonts with poor box-drawing coverage, or terminals
+        that mis-measure the glyph width.</span></li>
+        <li>Less room for wide tables <span>&mdash; resource IDs and ARNs truncate two characters
+        sooner in the results view.</span></li>
+        <li>Every full-width element <span>must be padded exactly; an off-by-one anywhere shows
+        up as a ragged right edge.</span></li>
+      </ul>
+    </div>
+  </div>
+  <p class="verdict"><strong>Proposal:</strong> adopt B. The two columns are recoverable by moving
+  the header into the frame, and the alternate screen makes an undefined boundary the more
+  expensive problem.</p>
+</section>
+
+</div></div>

@@ -1,0 +1,11 @@
+[>4m[=0;1u[?1049h[?25l[?2004h[>4;2m[=1;1u[H[2J── finops 3.0 · auth ───────────────────────────────────────────────────────────[7;6HNo credentials resolved. Choose a source:[9;6H✓ IAM Identity Center      session "acme-sso"  (expired 42m ago)
+[6G✓ Shared profiles          3 found
+[6G✗ Environment variables    not set
+[6G✗ Instance metadata        not on EC2/ECS
+
+[6G▸ Sign in to "acme-sso"[22X[14;51Hruns aws sso login
+[8GUse profile  dev
+[8GUse profile  prod
+[8GUse profile  stage[5B────────────────────────────────────────────────────────────────────────────────
+   ↑↓ move • ↵ select • ? help • q quit
+───────────────────────────────────────────────────────────────────────────────[?7l─[?7h[>4m[=0;1u[24;1H[?1049l[?25h[?2004l

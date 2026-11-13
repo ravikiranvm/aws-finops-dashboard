@@ -173,3 +173,7 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# --- v3 (Go) ---
+/finops
+*.test

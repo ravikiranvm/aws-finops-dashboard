@@ -1,0 +1,393 @@
+<title>finops v3 &mdash; Finding details in the results screen</title>
+<style>
+:root {
+  --text:#1f2328; --dim:#656d76; --accent:#0969da; --positive:#1a7f37;
+  --negative:#cf222e; --warning:#9a6700; --border:#d0d7de;
+  --sel-bg:#fff1e5; --sel-fg:#bc4c00; --terminal-bg:#ffffff; --page-bg:#f6f8fa;
+  --shadow:0 1px 2px rgba(31,35,40,.08), 0 8px 24px rgba(31,35,40,.08);
+  --chrome:#f6f8fa;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text:#e6edf3; --dim:#8b949e; --accent:#79c0ff; --positive:#3fb950;
+    --negative:#f85149; --warning:#d29922; --border:#30363d;
+    --sel-bg:#3d2a12; --sel-fg:#ffa657; --terminal-bg:#0d1117; --page-bg:#010409;
+    --shadow:0 1px 2px rgba(1,4,9,.6), 0 8px 24px rgba(1,4,9,.5);
+    --chrome:#161b22;
+  }
+}
+:root[data-theme="dark"] {
+  --text:#e6edf3; --dim:#8b949e; --accent:#79c0ff; --positive:#3fb950;
+  --negative:#f85149; --warning:#d29922; --border:#30363d;
+  --sel-bg:#3d2a12; --sel-fg:#ffa657; --terminal-bg:#0d1117; --page-bg:#010409;
+  --shadow:0 1px 2px rgba(1,4,9,.6), 0 8px 24px rgba(1,4,9,.5);
+  --chrome:#161b22;
+}
+:root[data-theme="light"] {
+  --text:#1f2328; --dim:#656d76; --accent:#0969da; --positive:#1a7f37;
+  --negative:#cf222e; --warning:#9a6700; --border:#d0d7de;
+  --sel-bg:#fff1e5; --sel-fg:#bc4c00; --terminal-bg:#ffffff; --page-bg:#f6f8fa;
+  --shadow:0 1px 2px rgba(31,35,40,.08), 0 8px 24px rgba(31,35,40,.08);
+  --chrome:#f6f8fa;
+}
+
+.page {
+  background: var(--page-bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0;
+  padding: 4rem 1.5rem 6rem;
+  overflow-x: hidden;
+}
+.wrap { max-width: 62rem; margin: 0 auto; }
+
+.eyebrow {
+  font-size: .75rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--dim); margin: 0 0 .75rem;
+}
+h1 {
+  font-size: clamp(1.7rem, 4vw, 2.35rem); line-height: 1.15; font-weight: 600;
+  letter-spacing: -.02em; margin: 0 0 1.25rem; color: var(--text);
+}
+.lede { font-size: 1.0625rem; color: var(--dim); max-width: 46rem; margin: 0 0 .9rem; }
+.lede strong { color: var(--text); font-weight: 600; }
+
+hr.div {
+  border: 0; border-top: 1px solid var(--border);
+  margin: 3.5rem 0 0;
+}
+
+section { margin-top: 3.5rem; }
+.sec-head { display: flex; align-items: baseline; gap: .75rem; flex-wrap: wrap; }
+.sec-tag {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: .7rem; letter-spacing: .1em; color: var(--dim);
+  border: 1px solid var(--border); border-radius: 999px; padding: .15rem .55rem;
+  white-space: nowrap;
+}
+h2 {
+  font-size: 1.3rem; font-weight: 600; letter-spacing: -.01em;
+  margin: 0; color: var(--text);
+}
+.pill {
+  font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; font-weight: 600;
+  color: var(--positive); border: 1px solid var(--positive); border-radius: 999px;
+  padding: .1rem .5rem;
+}
+.caption {
+  color: var(--dim); max-width: 44rem; margin: .6rem 0 1.5rem; font-size: .9375rem;
+}
+.sub {
+  color: var(--dim); font-size: .8125rem; margin: 1.75rem 0 .6rem;
+  letter-spacing: .06em; text-transform: uppercase;
+}
+
+/* ---- terminal window ---- */
+.win {
+  background: var(--terminal-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin: 0 0 1.25rem;
+}
+.win-bar {
+  display: flex; align-items: center; gap: .4rem;
+  padding: .5rem .75rem;
+  background: var(--chrome);
+  border-bottom: 1px solid var(--border);
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); flex: none; }
+.win-name {
+  margin-left: .5rem;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: .6875rem; color: var(--dim); letter-spacing: .04em;
+}
+.term { overflow-x: auto; padding: 1rem 1.15rem 1.15rem; }
+pre.tty {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: pre;
+  tab-size: 4;
+}
+@media (max-width: 640px) { pre.tty { font-size: 11px; } }
+
+.dim { color: var(--dim); }
+.bx  { color: var(--border); }
+.pos { color: var(--positive); }
+.neg { color: var(--negative); }
+.warn{ color: var(--warning); }
+.key { color: var(--accent); }
+.sel { background: var(--sel-bg); color: var(--sel-fg); }
+.sel .dim, .sel .pos, .sel .warn, .sel .key { color: inherit; }
+
+/* ---- tradeoffs ---- */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem; }
+@media (max-width: 720px) { .cols { grid-template-columns: 1fr; } }
+.card {
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 1.15rem 1.25rem 1.25rem; background: var(--terminal-bg);
+}
+.card h3 {
+  margin: 0 0 .75rem; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase;
+  font-weight: 600;
+}
+.card.gain h3 { color: var(--positive); }
+.card.cost h3 { color: var(--negative); }
+.card ul { margin: 0; padding-left: 1.1rem; }
+.card li { margin: 0 0 .5rem; font-size: .9375rem; color: var(--text); }
+.card li:last-child { margin-bottom: 0; }
+.card li span { color: var(--dim); }
+.verdict {
+  margin-top: 1.5rem; padding: .9rem 1.1rem;
+  border-left: 3px solid var(--accent); background: var(--terminal-bg);
+  border-radius: 0 6px 6px 0; font-size: .9375rem;
+}
+.verdict strong { color: var(--accent); font-weight: 600; }
+
+/* ---- additions for this page ---- */
+.cmp { width:100%; border-collapse:collapse; margin:1.25rem 0 0; font-size:.9rem; }
+.cmp th, .cmp td { text-align:left; padding:.5rem .7rem; border-bottom:1px solid var(--border); vertical-align:top; }
+.cmp th { font-size:.7rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); font-weight:600; }
+.cmp tr:last-child td { border-bottom:0; }
+.cmp code, code.mono, .note code, .caption code, .verdict code, .lede code {
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; font-size:.85em;
+}
+.strike, .strike code { color:var(--dim); text-decoration:line-through; }
+.tblwrap { overflow-x:auto; }
+.note { font-size:.875rem; color:var(--dim); margin:.9rem 0 0; max-width:46rem; }
+.note strong { color:var(--text); font-weight:600; }
+.cols3 { display:grid; grid-template-columns:repeat(3,1fr); gap:1.25rem; margin-top:1.5rem; }
+@media (max-width:820px){ .cols3 { grid-template-columns:1fr; } }
+.card.neutral h3 { color:var(--accent); }
+.sb { color:var(--border); }
+.sb-t { color:var(--dim); }
+</style>
+<div class="page"><div class="wrap">
+
+<p class="eyebrow">Design review &middot; Audit results</p>
+<h1>Showing a finding's detail without leaving the results screen</h1>
+<p class="lede">Today a finding's evidence lives on its own screen, reached with <code>&crarr;</code>
+and left with <code>esc</code>. The question is whether that screen earns its place, or whether the
+detail belongs <strong>inside the results list</strong>.</p>
+<p class="lede">Two things make the current split hard to defend: most of what the detail screen
+shows is already on the row you pressed <code>&crarr;</code> on, and the screen
+<strong>disables <code>&uarr;&darr;</code></strong> &mdash; you cannot walk to the next finding
+without going back first.</p>
+
+<hr class="div">
+
+<section>
+  <div class="sec-head"><span class="sec-tag">why</span><h2>How much of the detail screen is new information?</h2></div>
+  <p class="caption">Every field on the detail screen, checked against the results row it drills
+  into: <code class="mono">&#9656; vol-0f066ace215f73d98&nbsp;&nbsp;ap-southeast-1&nbsp;&nbsp;500 GB&nbsp;&nbsp;gp3&nbsp;&nbsp;$48.00</code></p>
+  <div class="tblwrap">
+  <table class="cmp">
+    <thead><tr><th>Detail field</th><th>Value</th><th>Already visible in the results screen?</th></tr></thead>
+    <tbody>
+      <tr><td class="strike"><code>FINDING</code></td><td class="strike">vol-0f0&hellip; &middot; 500 GB gp3 &middot; unattached</td><td>Yes &mdash; the resource, size and type columns, recombined into a sentence</td></tr>
+      <tr><td class="strike"><code>CATEGORY</code></td><td class="strike">Waste &middot; basis exact</td><td>Yes &mdash; in the screen's subtitle, and identical for every row</td></tr>
+      <tr><td class="strike"><code>SAVINGS</code></td><td class="strike">$48.00 / month</td><td>Yes &mdash; the <code>$/MO</code> column</td></tr>
+      <tr><td><code>COMPUTED</code></td><td>500 GB &times; $0.0960/GB-month &hellip;</td><td><strong>No</strong> &mdash; the arithmetic behind the number</td></tr>
+      <tr><td class="strike"><code>RESOURCE</code></td><td class="strike">vol-0f066ace215f73d98</td><td>Yes &mdash; the <code>RESOURCE</code> column</td></tr>
+      <tr><td class="strike"><code>REGION</code></td><td class="strike">ap-southeast-1</td><td>Yes &mdash; the <code>REGION</code> column</td></tr>
+      <tr><td><code>ACCOUNT</code></td><td>548846591939</td><td><strong>No</strong> &mdash; and it will matter once org fan-out lands</td></tr>
+      <tr><td><code>OWNER</code></td><td>untagged &mdash; no owner</td><td><strong>No</strong> &mdash; decides whether anyone can action it</td></tr>
+      <tr><td><code>AGE_DAYS</code></td><td>62</td><td><strong>No</strong> &mdash; how confident we are it is really idle</td></tr>
+      <tr><td class="strike"><code>SIZE_GB</code></td><td class="strike">500</td><td>Yes &mdash; the <code>SIZE</code> column, unformatted</td></tr>
+      <tr><td class="strike"><code>VOLUME_TYPE</code></td><td class="strike">gp3</td><td>Yes &mdash; the <code>TYPE</code> column</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="note"><strong>7 of 11 fields restate the row.</strong> Four carry new information:
+  the evidence, the owner, the account, and the age. A whole screen and a navigation round-trip
+  exist to deliver four facts &mdash; and the remediation command we designed but never built
+  would be a fifth.</p>
+</section>
+
+<hr class="div">
+
+<section>
+  <div class="sec-head"><span class="sec-tag">A</span><h2>Expand in place, written as prose</h2>
+  <span class="pill">Recommended</span></div>
+  <p class="caption">The selected row turns from <code>&#9656;</code> to <code>&#9662;</code> and
+  three lines unfold beneath it: the arithmetic, the facts the columns cannot hold, and the command
+  that fixes it. Neighbouring findings stay on screen.</p>
+  <div class="win"><div class="win-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="win-name">audit &mdash; results &mdash; 80&#215;24</span></div><div class="term"><pre class="tty"><span class="bx">── </span>finops 3.0 · audit › Unattached EBS volumes<span class="bx"> ────────</span> <span class="dim">raviki · 548846591939</span> <span class="bx">──</span>
+
+   8 findings<span class="dim"> · </span><span class="pos">$890.00/month</span>
+   <span class="dim">Unattached EBS volumes · exact basis</span>
+
+     <span class="dim">RESOURCE                     REGION               SIZE   TYPE       $/MO</span>
+     <span class="bx">────────────────────────────────────────────────────────────────────────</span>
+<span class="sel">   ▾ vol-0f066ace215f73d98        ap-southeast-1     500 GB    gp3     $48.00  </span>
+         <span class="dim">500 GB × $0.0960/GB-month (gp3, ap-southeast-1) = </span><span class="pos">$48.00/month</span>
+         <span class="dim">unattached </span>62 days<span class="dim"> · account </span>548846591939<span class="dim"> · </span><span class="warn">untagged, no owner</span>
+         <span class="key">→ aws ec2 delete-volume --volume-id vol-0f066ace215f73d98</span>
+
+     vol-0a91c7de44b2f8103        <span class="dim">ap-southeast-1     300 GB    gp2</span>     <span class="pos">$30.00</span>
+     vol-07c3ba1e9d5486fa2        <span class="dim">us-east-1          250 GB    gp3</span>     <span class="pos">$24.00</span>
+     vol-0d5e28fc7a03b91c4        <span class="dim">us-east-1          120 GB    gp2</span>     <span class="pos">$12.00</span>
+     vol-0b8471ae6c29df350        <span class="dim">eu-west-1          100 GB    gp3</span>     <span class="pos">$10.00</span>
+     vol-03fa9d17be5c8206e        <span class="dim">eu-west-1           80 GB    gp2</span>      <span class="pos">$8.00</span>
+     vol-0e6c25b8f194a730d        <span class="dim">ap-south-1          60 GB    gp3</span>      <span class="pos">$6.00</span>
+     vol-091db7c3e58f2a64b        <span class="dim">ap-south-1          40 GB    gp2</span>      <span class="pos">$4.00</span>
+<span class="bx">────────────────────────────────────────────────────────────────────────────────</span>
+   <span class="key">↑↓</span><span class="dim"> move · </span><span class="key">↵</span><span class="dim"> collapse · </span><span class="key">c</span><span class="dim"> copy command · </span><span class="key">r</span><span class="dim"> re-run · </span><span class="key">esc</span><span class="dim"> back · </span><span class="key">q</span><span class="dim"> quit</span>
+<span class="bx">────────────────────────────────────────────────────────────────────────────────</span></pre></div></div>
+  <p class="note">Costs 4 rows while open. Reads as three statements rather than a form, which
+  suits content that is mostly one long sentence of arithmetic. The weakness: no column of labels
+  to scan down, so finding "the owner" means reading the line.</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-tag">B</span><h2>Expand in place, keeping the labels</h2></div>
+  <p class="caption">The same content, but retaining the detail screen's label column. More
+  scannable, and it extends cleanly when a check has fields these do not &mdash; a stopped
+  instance's uptime, a snapshot's source volume.</p>
+  <div class="win"><div class="win-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="win-name">audit &mdash; results &mdash; 80&#215;24</span></div><div class="term"><pre class="tty"><span class="bx">── </span>finops 3.0 · audit › Unattached EBS volumes<span class="bx"> ────────</span> <span class="dim">raviki · 548846591939</span> <span class="bx">──</span>
+
+   8 findings<span class="dim"> · </span><span class="pos">$890.00/month</span>
+   <span class="dim">Unattached EBS volumes · exact basis</span>
+
+     <span class="dim">RESOURCE                     REGION               SIZE   TYPE       $/MO</span>
+     <span class="bx">────────────────────────────────────────────────────────────────────────</span>
+<span class="sel">   ▾ vol-0f066ace215f73d98        ap-southeast-1     500 GB    gp3     $48.00  </span>
+         <span class="dim">COMPUTED    </span>500 GB × $0.0960/GB-month (gp3, ap-southeast-1)
+                     <span class="pos">= $48.00 per month</span>
+         <span class="dim">UNATTACHED  </span>62 days
+         <span class="dim">OWNER       </span><span class="warn">untagged — no owner</span>
+         <span class="dim">ACTION      </span><span class="key">aws ec2 delete-volume --volume-id vol-0f066a…</span>
+
+     vol-0a91c7de44b2f8103        <span class="dim">ap-southeast-1     300 GB    gp2</span>     <span class="pos">$30.00</span>
+     vol-07c3ba1e9d5486fa2        <span class="dim">us-east-1          250 GB    gp3</span>     <span class="pos">$24.00</span>
+     vol-0d5e28fc7a03b91c4        <span class="dim">us-east-1          120 GB    gp2</span>     <span class="pos">$12.00</span>
+     vol-0b8471ae6c29df350        <span class="dim">eu-west-1          100 GB    gp3</span>     <span class="pos">$10.00</span>
+     vol-03fa9d17be5c8206e        <span class="dim">eu-west-1           80 GB    gp2</span>      <span class="pos">$8.00</span>
+<span class="bx">────────────────────────────────────────────────────────────────────────────────</span>
+   <span class="key">↑↓</span><span class="dim"> move · </span><span class="key">↵</span><span class="dim"> collapse · </span><span class="key">c</span><span class="dim"> copy command · </span><span class="key">r</span><span class="dim"> re-run · </span><span class="key">esc</span><span class="dim"> back · </span><span class="key">q</span><span class="dim"> quit</span>
+<span class="bx">────────────────────────────────────────────────────────────────────────────────</span></pre></div></div>
+  <p class="note">Costs 6 rows while open &mdash; on an 80&times;24 terminal that is two fewer
+  findings visible than A. The label column also has to truncate the command, which is the one
+  thing on the block a person wants to copy whole.</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-tag">C</span><h2>No expansion &mdash; a strip that follows the cursor</h2></div>
+  <p class="caption">The detail sits in a fixed pane above the keybindings and updates as
+  <code>&uarr;&darr;</code> moves. No keypress, no list reflow, and it reuses the strip the
+  catalogue screen already has.</p>
+  <div class="win"><div class="win-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="win-name">audit &mdash; results &mdash; 80&#215;24</span></div><div class="term"><pre class="tty"><span class="bx">── </span>finops 3.0 · audit › Unattached EBS volumes<span class="bx"> ────────</span> <span class="dim">raviki · 548846591939</span> <span class="bx">──</span>
+
+   8 findings<span class="dim"> · </span><span class="pos">$890.00/month</span>
+   <span class="dim">Unattached EBS volumes · exact basis</span>
+
+     <span class="dim">RESOURCE                     REGION               SIZE   TYPE       $/MO</span>
+     <span class="bx">────────────────────────────────────────────────────────────────────────</span>
+<span class="sel">   ▸ vol-0f066ace215f73d98        ap-southeast-1     500 GB    gp3     $48.00  </span>
+     vol-0a91c7de44b2f8103        <span class="dim">ap-southeast-1     300 GB    gp2</span>     <span class="pos">$30.00</span>
+     vol-07c3ba1e9d5486fa2        <span class="dim">us-east-1          250 GB    gp3</span>     <span class="pos">$24.00</span>
+     vol-0d5e28fc7a03b91c4        <span class="dim">us-east-1          120 GB    gp2</span>     <span class="pos">$12.00</span>
+     vol-0b8471ae6c29df350        <span class="dim">eu-west-1          100 GB    gp3</span>     <span class="pos">$10.00</span>
+     vol-03fa9d17be5c8206e        <span class="dim">eu-west-1           80 GB    gp2</span>      <span class="pos">$8.00</span>
+     vol-0e6c25b8f194a730d        <span class="dim">ap-south-1          60 GB    gp3</span>      <span class="pos">$6.00</span>
+     vol-091db7c3e58f2a64b        <span class="dim">ap-south-1          40 GB    gp2</span>      <span class="pos">$4.00</span>
+
+<span class="bx">────────────────────────────────────────────────────────────────────────────────</span>
+   <span class="dim">500 GB × $0.0960/GB-month = </span><span class="pos">$48.00/mo</span><span class="dim"> · 62 days unattached · </span><span class="warn">no owner</span>
+   <span class="key">→ aws ec2 delete-volume --volume-id vol-0f066ace215f73d98</span>
+<span class="bx">────────────────────────────────────────────────────────────────────────────────</span>
+   <span class="key">↑↓</span><span class="dim"> move · </span><span class="key">c</span><span class="dim"> copy command · </span><span class="key">r</span><span class="dim"> re-run · </span><span class="key">esc</span><span class="dim"> back · </span><span class="key">q</span><span class="dim"> quit</span>
+<span class="bx">────────────────────────────────────────────────────────────────────────────────</span></pre></div></div>
+  <p class="note">The list never moves under you, and the detail is free &mdash; you get it by
+  arrowing, not by asking. But the pane costs its 4 rows <em>permanently</em>, it caps evidence at
+  two lines whatever the check needs, and it cannot show two findings' evidence side by side, which
+  is exactly what "is 62 days unusual here?" requires.</p>
+</section>
+
+<hr class="div">
+
+<section>
+  <div class="sec-head"><span class="sec-tag">scroll</span><h2>What it looks like scrolled</h2></div>
+  <p class="caption">A real audit returns tens or hundreds of findings, and the list does not
+  scroll today &mdash; it is silently cut off at whatever fits. Adding
+  <code>bubbles/viewport</code> belongs in the same change: expansion pushes rows past the fold, so
+  the fold has to exist first. Position is stated twice, as a count in the header and as a thumb on
+  the right edge.</p>
+  <div class="win"><div class="win-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="win-name">audit &mdash; results &mdash; 80&#215;24</span></div><div class="term"><pre class="tty"><span class="bx">── </span>finops 3.0 · audit › Unattached EBS volumes<span class="bx"> ────────</span> <span class="dim">raviki · 548846591939</span> <span class="bx">──</span>
+
+   40 findings<span class="dim"> · </span><span class="pos">$3,204.00/month</span>                                <span class="dim">12–24 of 40</span>
+   <span class="dim">Unattached EBS volumes · exact basis</span>
+
+     <span class="dim">RESOURCE                     REGION               SIZE   TYPE       $/MO</span>
+     <span class="bx">────────────────────────────────────────────────────────────────────────</span>
+     vol-0c41f8ba279e5d63a        <span class="dim">us-east-1          220 GB    gp3</span>     <span class="pos">$21.12</span>  <span class="sb">│</span>
+     vol-05be93d7c1a48f206        <span class="dim">us-east-1          200 GB    gp2</span>     <span class="pos">$20.00</span>  <span class="sb">│</span>
+<span class="sel">   ▾ vol-0f066ace215f73d98        ap-southeast-1     500 GB    gp3     $48.00  </span><span class="sb-t">█</span>
+         <span class="dim">500 GB × $0.0960/GB-month (gp3, ap-southeast-1) = </span><span class="pos">$48.00/month</span>        <span class="sb-t">█</span>
+         <span class="dim">unattached </span>62 days<span class="dim"> · account </span>548846591939<span class="dim"> · </span><span class="warn">untagged, no owner</span>        <span class="sb-t">█</span>
+         <span class="key">→ aws ec2 delete-volume --volume-id vol-0f066ace215f73d98</span>             <span class="sb-t">█</span>
+                                                                               <span class="sb">│</span>
+     vol-0aa72e1cf6b3d9508        <span class="dim">eu-west-1          180 GB    gp3</span>     <span class="pos">$17.28</span>  <span class="sb">│</span>
+     vol-0f19d4c76ea825b3f        <span class="dim">eu-west-1          160 GB    gp2</span>     <span class="pos">$16.00</span>  <span class="sb">│</span>
+     vol-06d8b3a95c74e1f20        <span class="dim">ap-south-1         150 GB    gp3</span>     <span class="pos">$14.40</span>  <span class="sb">│</span>
+     vol-02e7c19fb8534da6c        <span class="dim">ap-south-1         140 GB    gp2</span>     <span class="pos">$14.00</span>  <span class="sb">│</span>
+<span class="bx">────────────────────────────────────────────────────────────────────────────────</span>
+   <span class="key">↑↓</span><span class="dim"> move · </span><span class="key">↵</span><span class="dim"> collapse · </span><span class="key">c</span><span class="dim"> copy command · </span><span class="key">r</span><span class="dim"> re-run · </span><span class="key">esc</span><span class="dim"> back · </span><span class="key">q</span><span class="dim"> quit</span>
+<span class="bx">────────────────────────────────────────────────────────────────────────────────</span></pre></div></div>
+  <p class="note">The thumb spans the expanded block because the block is part of what is
+  scrolled, not chrome floating over it. One consequence worth deciding: when a row is expanded and
+  you press <code>&darr;</code> past its last line, does the cursor move to the next
+  <em>finding</em> or into the block? Moving between findings is the common case, so the block
+  should not be selectable.</p>
+</section>
+
+<hr class="div">
+
+<section>
+  <div class="sec-head"><span class="sec-tag">vs</span><h2>Trade-offs</h2></div>
+  <div class="cols3">
+    <div class="card gain">
+      <h3>A &mdash; prose block</h3>
+      <ul>
+        <li>4 rows while open <span>&mdash; the cheapest of the three.</span></li>
+        <li>Full command, untruncated <span>&mdash; the one line worth copying stays whole.</span></li>
+        <li>Same gesture as the catalogue <span>&mdash; the tool has one idea about drilling in.</span></li>
+        <li>Reads naturally <span>because the evidence really is one sentence of arithmetic.</span></li>
+      </ul>
+    </div>
+    <div class="card neutral">
+      <h3>B &mdash; labelled block</h3>
+      <ul>
+        <li>Scannable <span>&mdash; a label column beats reading a sentence to find the owner.</span></li>
+        <li>Extends cleanly <span>to checks with fields these do not have.</span></li>
+        <li>6 rows while open <span>&mdash; two fewer findings visible at 80&times;24.</span></li>
+        <li>Truncates the command <span>&mdash; 12 columns lost to labels.</span></li>
+      </ul>
+    </div>
+    <div class="card cost">
+      <h3>C &mdash; following strip</h3>
+      <ul>
+        <li>Zero keystrokes <span>&mdash; detail arrives by arrowing.</span></li>
+        <li>List never reflows <span>under the cursor.</span></li>
+        <li>Costs 4 rows always <span>&mdash; even when nobody is reading it.</span></li>
+        <li>Fixed height <span>caps evidence at two lines regardless of the check.</span></li>
+        <li>No comparison <span>&mdash; one finding's detail at a time, by construction.</span></li>
+      </ul>
+    </div>
+  </div>
+  <p class="verdict"><strong>Proposal:</strong> adopt A, and delete <code>screenDetail</code>.
+  It costs the fewest rows, keeps the remediation command intact, and matches the expand gesture
+  the catalogue already uses. Ship <code>bubbles/viewport</code> in the same change so the list
+  scrolls before expansion starts pushing rows past the fold.</p>
+  <p class="note">If the label column turns out to matter once more checks exist &mdash; stopped
+  instances and orphaned snapshots have fields volumes do not &mdash; B is a change to one render
+  function, not a change of architecture. That is the reason to start at A rather than B.</p>
+</section>
+
+</div></div>

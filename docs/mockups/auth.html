@@ -1,0 +1,453 @@
+<title>finops v3 — Auth screens</title>
+<style>
+  :root {
+    --text: #1f2328;
+    --dim: #656d76;
+    --accent: #0969da;
+    --positive: #1a7f37;
+    --negative: #cf222e;
+    --warning: #9a6700;
+    --selection: #eaeef2;
+    --border: #d0d7de;
+    --sel-warm-bg: #fff1e5; --sel-warm-fg: #bc4c00;
+    --terminal-bg: #ffffff;
+    --page-bg: #f6f8fa;
+    --shadow: 0 1px 2px rgba(31, 35, 40, .06), 0 8px 24px rgba(31, 35, 40, .06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --text: #e6edf3; --dim: #8b949e; --accent: #79c0ff;
+      --positive: #3fb950; --negative: #f85149; --warning: #d29922;
+      --selection: #21262d; --border: #30363d;
+      --sel-warm-bg: #3d2a12; --sel-warm-fg: #ffa657;
+      --terminal-bg: #0d1117; --page-bg: #010409;
+      --shadow: 0 1px 2px rgba(1, 4, 9, .5), 0 8px 24px rgba(1, 4, 9, .4);
+    }
+  }
+  :root[data-theme="light"] {
+    --text: #1f2328; --dim: #656d76; --accent: #0969da;
+    --positive: #1a7f37; --negative: #cf222e; --warning: #9a6700;
+    --selection: #eaeef2; --border: #d0d7de;
+    --sel-warm-bg: #fff1e5; --sel-warm-fg: #bc4c00;
+    --terminal-bg: #ffffff; --page-bg: #f6f8fa;
+    --shadow: 0 1px 2px rgba(31, 35, 40, .06), 0 8px 24px rgba(31, 35, 40, .06);
+  }
+  :root[data-theme="dark"] {
+    --text: #e6edf3; --dim: #8b949e; --accent: #79c0ff;
+    --positive: #3fb950; --negative: #f85149; --warning: #d29922;
+    --selection: #21262d; --border: #30363d;
+    --sel-warm-bg: #3d2a12; --sel-warm-fg: #ffa657;
+    --terminal-bg: #0d1117; --page-bg: #010409;
+    --shadow: 0 1px 2px rgba(1, 4, 9, .5), 0 8px 24px rgba(1, 4, 9, .4);
+  }
+
+  .page {
+    box-sizing: border-box;
+    max-width: 64rem;
+    margin: 0 auto;
+    padding: 3.5rem 1.25rem 6rem;
+    background: var(--page-bg);
+    color: var(--text);
+    /* Document voice is sans; only terminal content is mono, so the screens
+       read as artifacts embedded in a document. */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-text-size-adjust: 100%;
+  }
+  .page *, .page *::before, .page *::after { box-sizing: border-box; }
+
+  .page-head { border-bottom: 1px solid var(--border); padding-bottom: 2rem; margin-bottom: 3rem; }
+  h1 { margin: 0 0 .9rem; font-size: 1.55rem; font-weight: 600; letter-spacing: -.015em; text-wrap: balance; }
+  h1 .v { color: var(--dim); font-weight: 400; }
+  .lede { margin: 0; max-width: 44rem; color: var(--dim); font-size: .92rem; line-height: 1.7; }
+
+  .part {
+    margin: 3.5rem 0 1.75rem;
+    padding-bottom: .6rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: baseline; gap: .75rem; flex-wrap: wrap;
+  }
+  .part h2 { margin: 0; font-size: 1rem; font-weight: 600; letter-spacing: -.005em; }
+  .part .part-note { margin: 0; font-size: .85rem; color: var(--dim); }
+
+  section.screen { margin: 0 0 3rem; }
+  .cap-index { display: block; font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); margin-bottom: .4rem; }
+  h3 { margin: 0 0 .3rem; font-size: .98rem; font-weight: 600; }
+  .cap-note { margin: 0 0 1rem; max-width: 46rem; font-size: .86rem; color: var(--dim); line-height: 1.65; }
+
+  .term {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--terminal-bg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .term-bar {
+    display: flex; align-items: center; gap: .45rem;
+    padding: .55rem .85rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--selection);
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--dim); opacity: .4; flex: none; }
+  .term-title { margin-left: .55rem; font-size: .72rem; letter-spacing: .04em; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .term-body { overflow-x: auto; padding: 1rem 1.15rem; }
+
+  pre, .term-title, code {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  pre {
+    margin: 0;
+    font-size: .8rem;
+    line-height: 1.6;
+    color: var(--text);
+    white-space: pre;
+    tab-size: 4;
+    font-variant-numeric: tabular-nums;
+  }
+  code { font-size: .92em; }
+
+  .dim { color: var(--dim); }
+  .accent { color: var(--accent); }
+  .pos { color: var(--positive); }
+  .neg { color: var(--negative); }
+  .warn { color: var(--warning); }
+  .sel { background: var(--selection); color: var(--accent); }
+  .selw { background: var(--sel-warm-bg); color: var(--sel-warm-fg); }
+  .rule { color: var(--border); }
+
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .75rem; margin: 0; padding: 0; list-style: none; }
+  .swatch { display: flex; align-items: flex-start; gap: .7rem; padding: .7rem .8rem; border: 1px solid var(--border); border-radius: 8px; background: var(--terminal-bg); }
+  .chip { width: 14px; height: 14px; border-radius: 4px; flex: none; margin-top: .25rem; box-shadow: inset 0 0 0 1px rgba(128,128,128,.35); }
+  .chip-text { background: var(--text); } .chip-dim { background: var(--dim); }
+  .chip-accent { background: var(--accent); } .chip-pos { background: var(--positive); }
+  .chip-neg { background: var(--negative); } .chip-warn { background: var(--warning); }
+  .chip-sel { background: var(--selection); } .chip-border { background: var(--border); }
+  .sw-name { font-size: .8rem; font-weight: 600; }
+  .sw-meaning { font-size: .76rem; color: var(--dim); line-height: 1.55; }
+
+  @media (max-width: 34rem) {
+    .page { padding: 2.25rem .85rem 4rem; }
+    pre { font-size: .68rem; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="page-head">
+    <h1>finops <span class="v">v3</span> — Auth screens</h1>
+    <p class="lede">Terminal mockups for the authentication flow of <code>finops</code>. Interactive screens are shown at full size — 80&nbsp;columns by 24&nbsp;rows — so the chrome, the breathing room, and the density are all real. Colour is applied by meaning, never decoration.</p>
+  </header>
+
+  <div class="part">
+    <h2>Interactive screens</h2>
+    <p class="part-note">Rendered inline at a terminal. Every one shares the same frame.</p>
+  </div>
+
+  <section class="screen">
+    <span class="cap-index">Screen 1</span>
+    <h3>Credential picker</h3>
+    <p class="cap-note">First run, or whenever nothing resolves. Adaptive — it lists only sources actually present, so the two <span class="dim">✗</span> rows are dim rather than red: unavailable is not an error. No command-echo line here, because there is no view state yet to reproduce.</p>
+    <div class="term">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-title">finops</span></div>
+      <div class="term-body">
+<pre>  <span class="dim">finops 3.0  ·  auth</span>
+
+  No credentials resolved. Choose a source:
+
+  <span class="pos">✓</span> IAM Identity Center     <span class="dim">session "acme-sso"</span>   <span class="warn">(expired 42m ago)</span>
+  <span class="pos">✓</span> Shared profiles         <span class="dim">4 found</span>
+  <span class="dim">✗ Environment variables   not set</span>
+  <span class="dim">✗ Instance metadata       not on EC2/ECS</span>
+
+  <span class="sel">▸ Sign in to "acme-sso"                    runs aws sso login</span>
+    Use profile  prod
+    Use profile  stage
+    Use profile  dev
+    Assume a role by ARN…
+
+
+
+
+
+
+  <span class="rule">──────────────────────────────────────────────────────────────────</span>
+  <span class="accent">[↑↓]</span> <span class="dim">move</span>   <span class="accent">[↵]</span> <span class="dim">select</span>   <span class="accent">[q]</span> <span class="dim">quit</span>                            <span class="accent">?</span> <span class="dim">help</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen">
+    <span class="cap-index">Screen 1b</span>
+    <h3>Credential picker — vertically centred</h3>
+    <p class="cap-note">The same screen with content centred between the bars instead of hugging the top. Horizontal alignment is unchanged — the left edge has to stay consistent with the list screens, or every transition shifts sideways.</p>
+    <div class="term">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-title">finops</span></div>
+      <div class="term-body">
+<pre>  <span class="dim">finops 3.0  ·  auth</span>
+
+
+
+
+  No credentials resolved. Choose a source:
+
+  <span class="pos">✓</span> IAM Identity Center     <span class="dim">session "acme-sso"</span>   <span class="warn">(expired 42m ago)</span>
+  <span class="pos">✓</span> Shared profiles         <span class="dim">4 found</span>
+  <span class="dim">✗ Environment variables   not set</span>
+  <span class="dim">✗ Instance metadata       not on EC2/ECS</span>
+
+  <span class="sel">▸ Sign in to "acme-sso"                    runs aws sso login</span>
+    Use profile  prod
+    Use profile  stage
+    Use profile  dev
+    Assume a role by ARN…
+
+
+
+
+  <span class="rule">──────────────────────────────────────────────────────────────────</span>
+  <span class="accent">[↑↓]</span> <span class="dim">move</span>   <span class="accent">[↵]</span> <span class="dim">select</span>   <span class="accent">[q]</span> <span class="dim">quit</span>                            <span class="accent">?</span> <span class="dim">help</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen">
+    <span class="cap-index">Screen 2</span>
+    <h3>Organizations discovery</h3>
+    <p class="cap-note">Shown once, the first time credentials resolve to a management account. The two prices are coloured oppositely — same kind of number, opposite valence — which is the palette rule working. The answer is remembered either way; <span class="dim">n</span> is not re-asked next launch.</p>
+    <div class="term">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-title">finops</span></div>
+      <div class="term-body">
+<pre>  <span class="dim">finops 3.0  ·  auth › organizations         123456789012 · SSO 6h</span>
+
+  <span class="pos">✓</span> 123456789012 is an Organizations management account
+    <span class="dim">14 member accounts found</span>
+
+    <span class="dim">Cost </span>  1 API call for all 14 (<span class="pos">~$0.03</span>) instead of 14 (<span class="neg">~$0.42</span>)
+    <span class="dim">Audit</span>  needs FinOpsReadOnly in each member account
+           <span class="dim">→</span> <span class="warn">not found</span> <span class="dim">· run</span>  <span class="accent">finops auth stackset</span>
+
+    Enable organization mode?
+
+
+
+
+
+
+
+
+  <span class="rule">──────────────────────────────────────────────────────────────────</span>
+  <span class="accent">[y]</span> <span class="dim">enable org mode</span>   <span class="accent">[n]</span> <span class="dim">this account only</span>              <span class="accent">?</span> <span class="dim">help</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen">
+    <span class="cap-index">Screen 3</span>
+    <h3>Audit home — the frame in use</h3>
+    <p class="cap-note">Not an auth screen, but the one that shows why the chrome is consistent: top bar carries tool, breadcrumb and identity; the strip above the keys describes whatever row is selected; the last line is the command that reproduces this exact view.</p>
+    <div class="term">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-title">finops audit</span></div>
+      <div class="term-body">
+<pre>  <span class="dim">finops 3.0  ·  audit                          prod-mgmt · org 14</span>
+
+  <span class="neg">$2,847/mo</span> <span class="dim">addressable waste ·</span> <span class="warn">$26,410/mo</span> <span class="dim">unattributed</span>
+
+  ▾ <span class="dim">WASTE</span>                                <span class="dim">58 findings ·</span> <span class="pos">$2,499/mo</span>
+      Unattached EBS volumes        <span class="dim">26m ago</span>     8      <span class="pos">$ 890/mo</span>
+    <span class="sel">▸ Idle NAT gateways               26m ago     4      $ 648/mo</span>
+      Stopped EC2 with attached EBS <span class="dim">26m ago</span>    12      <span class="pos">$ 537/mo</span>
+      Orphaned EBS snapshots        <span class="dim">26m ago</span>    23      <span class="pos">$ 312/mo</span>
+      Unassociated Elastic IPs      <span class="dim">26m ago</span>     3      <span class="pos">$ 108/mo</span>
+  ▾ <span class="dim">RATE</span>                                 <span class="dim">23 findings ·</span> <span class="pos">$314/mo</span>
+      gp2 → gp3 volume migration    <span class="dim">26m ago</span>    23      <span class="pos">$ 314/mo</span>
+  ▸ <span class="dim">ALLOCATION</span>                 <span class="dim">34 findings ·</span> <span class="warn">$26,410/mo unattr.</span>
+  ▸ <span class="dim">POLICY</span>                                          <span class="dim">20 findings</span>
+
+  <span class="dim">3 audits not yet run ·</span> <span class="accent">[n]</span> <span class="dim">run them</span>
+
+  <span class="rule">──────────────────────────────────────────────────────────────────</span>
+  <span class="dim">Idle NAT gateways · Waste · exact — gateways moving under 1 GB in</span>
+  <span class="dim">14 days. Each costs ~$32/mo in hourly charges regardless of use.</span>
+  <span class="rule">──────────────────────────────────────────────────────────────────</span>
+  <span class="accent">[space]</span> <span class="dim">expand</span>  <span class="accent">[↵]</span> <span class="dim">results</span>  <span class="accent">[r]</span> <span class="dim">run</span>  <span class="accent">[,]</span> <span class="dim">settings</span>   <span class="accent">:</span> <span class="dim">cmd</span>  <span class="accent">?</span>
+  <span class="accent">→ finops audit</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen">
+    <span class="cap-index">Screen 3b</span>
+    <h3>Audit home — orange selection</h3>
+    <p class="cap-note">The decisive comparison, because this screen carries every colour at once. Watch the selected row against <span class="warn">$26,410/mo unattributed</span> two lines below it: both are warm, and the question is whether the eye reads them as the same kind of signal. Selection is the least semantic thing on screen — it marks where the cursor is — so it should read as position, not meaning.</p>
+    <div class="term">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-title">finops audit — warm selection</span></div>
+      <div class="term-body">
+<pre>  <span class="dim">finops 3.0  ·  audit                          prod-mgmt · org 14</span>
+
+  <span class="neg">$2,847/mo</span> <span class="dim">addressable waste ·</span> <span class="warn">$26,410/mo</span> <span class="dim">unattributed</span>
+
+  ▾ <span class="dim">WASTE</span>                                <span class="dim">58 findings ·</span> <span class="pos">$2,499/mo</span>
+      Unattached EBS volumes        <span class="dim">26m ago</span>     8      <span class="pos">$ 890/mo</span>
+    <span class="selw">▸ Idle NAT gateways               26m ago     4      $ 648/mo</span>
+      Stopped EC2 with attached EBS <span class="dim">26m ago</span>    12      <span class="pos">$ 537/mo</span>
+      Orphaned EBS snapshots        <span class="dim">26m ago</span>    23      <span class="pos">$ 312/mo</span>
+      Unassociated Elastic IPs      <span class="dim">26m ago</span>     3      <span class="pos">$ 108/mo</span>
+  ▾ <span class="dim">RATE</span>                                 <span class="dim">23 findings ·</span> <span class="pos">$314/mo</span>
+      gp2 → gp3 volume migration    <span class="dim">26m ago</span>    23      <span class="pos">$ 314/mo</span>
+  ▸ <span class="dim">ALLOCATION</span>                 <span class="dim">34 findings ·</span> <span class="warn">$26,410/mo unattr.</span>
+  ▸ <span class="dim">POLICY</span>                                          <span class="dim">20 findings</span>
+
+  <span class="dim">3 audits not yet run ·</span> <span class="accent">[n]</span> <span class="dim">run them</span>
+
+  <span class="rule">──────────────────────────────────────────────────────────────────</span>
+  <span class="dim">Idle NAT gateways · Waste · exact — gateways moving under 1 GB in</span>
+  <span class="dim">14 days. Each costs ~$32/mo in hourly charges regardless of use.</span>
+  <span class="rule">──────────────────────────────────────────────────────────────────</span>
+  <span class="accent">[space]</span> <span class="dim">expand</span>  <span class="accent">[↵]</span> <span class="dim">results</span>  <span class="accent">[r]</span> <span class="dim">run</span>  <span class="accent">[,]</span> <span class="dim">settings</span>   <span class="accent">:</span> <span class="dim">cmd</span>  <span class="accent">?</span>
+  <span class="accent">→ finops audit</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen">
+    <span class="cap-index">Screen 1c</span>
+    <h3>Credential picker — orange selection</h3>
+    <p class="cap-note">The same treatment on a sparse screen. Here there is no competing warm signal except <span class="warn">(expired 42m ago)</span>, so the collision risk is lower — which is itself the argument that the audit home above is the case that decides it.</p>
+    <div class="term">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-title">finops — warm selection</span></div>
+      <div class="term-body">
+<pre>  <span class="dim">finops 3.0  ·  auth</span>
+
+  No credentials resolved. Choose a source:
+
+  <span class="pos">✓</span> IAM Identity Center     <span class="dim">session "acme-sso"</span>   <span class="warn">(expired 42m ago)</span>
+  <span class="pos">✓</span> Shared profiles         <span class="dim">4 found</span>
+  <span class="dim">✗ Environment variables   not set</span>
+  <span class="dim">✗ Instance metadata       not on EC2/ECS</span>
+
+  <span class="selw">▸ Sign in to "acme-sso"                    runs aws sso login</span>
+    Use profile  prod
+    Use profile  stage
+    Use profile  dev
+    Assume a role by ARN…
+
+
+
+
+
+
+  <span class="rule">──────────────────────────────────────────────────────────────────</span>
+  <span class="accent">[↑↓]</span> <span class="dim">move</span>   <span class="accent">[↵]</span> <span class="dim">select</span>   <span class="accent">[q]</span> <span class="dim">quit</span>                            <span class="accent">?</span> <span class="dim">help</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <div class="part">
+    <h2>Non-interactive output</h2>
+    <p class="part-note">No chrome. Piped, redirected, or read by an agent.</p>
+  </div>
+
+  <section class="screen">
+    <span class="cap-index">Screen 4</span>
+    <h3>Expired session</h3>
+    <p class="cap-note">Auth failure is not a screen you navigate — it prints and exits. The message states the failure once, then the exact commands to recover. Exit code <code>3</code> means <em>auth</em>, distinct from a generic failure.</p>
+    <div class="term">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-title">finops audit — expired</span></div>
+      <div class="term-body">
+<pre><span class="dim">$</span> <span class="accent">finops audit</span>
+<span class="neg">✗ IAM Identity Center session "acme-sso" expired 42m ago.</span>
+
+  <span class="dim">Fix:  </span> <span class="accent">aws sso login --sso-session acme-sso</span>
+  <span class="dim">Then: </span> <span class="accent">finops audit</span>
+
+  <span class="dim">Or:   </span> <span class="accent">finops --profile prod</span>
+
+<span class="dim">$</span> <span class="accent">echo $?</span>
+<span class="neg">3</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen">
+    <span class="cap-index">Screen 5</span>
+    <h3><code>finops auth</code></h3>
+    <p class="cap-note">A one-shot fact, so it prints rather than opening a view. The permission preflight is the point: without it, a missing <code>pricing:GetProducts</code> surfaces later as an audit with mysteriously absent dollar figures.</p>
+    <div class="term">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-title">finops auth</span></div>
+      <div class="term-body">
+<pre><span class="dim">$</span> <span class="accent">finops auth</span>
+<span class="dim">Identity  </span> arn:aws:sts::123456789012:assumed-role/FinOpsReadOnly/ravikiran
+<span class="dim">Account   </span> 123456789012  acme-management   <span class="dim">(Organizations management)</span>
+<span class="dim">Source    </span> IAM Identity Center · session "acme-sso" · expires 16:42 <span class="dim">(6h 51m)</span>
+<span class="dim">Region    </span> us-east-1
+<span class="dim">Mode      </span> organization · 14 accounts · member role FinOpsReadOnly
+
+<span class="dim">Permissions</span>
+  <span class="pos">✓</span> ce:GetCostAndUsage          <span class="pos">✓</span> organizations:ListAccounts
+  <span class="pos">✓</span> budgets:ViewBudget          <span class="pos">✓</span> ec2:DescribeVolumes
+  <span class="pos">✓</span> ec2:DescribeInstances       <span class="neg">✗</span> pricing:GetProducts      <span class="neg">denied</span>
+
+<span class="dim">6 of 7 permissions ·</span> <span class="warn">savings estimates unavailable</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen">
+    <span class="cap-index">Screen 6</span>
+    <h3>JSON error — what an agent receives</h3>
+    <p class="cap-note">The <code>remediation</code> field is the difference between an agent recovering on its own and an agent giving up. Errors go to stderr; the exit code carries the category.</p>
+    <div class="term">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-title">finops audit --format json</span></div>
+      <div class="term-body">
+<pre><span class="dim">$</span> <span class="accent">finops audit --format json</span>
+<span class="dim">{</span>
+  <span class="accent">"error"</span><span class="dim">:</span> <span class="dim">{</span>
+    <span class="accent">"code"</span><span class="dim">:</span> <span class="neg">"auth_expired"</span><span class="dim">,</span>
+    <span class="accent">"message"</span><span class="dim">:</span> "IAM Identity Center session \"acme-sso\" expired 42m ago"<span class="dim">,</span>
+    <span class="accent">"remediation"</span><span class="dim">:</span> "aws sso login --sso-session acme-sso"
+  <span class="dim">}</span>
+<span class="dim">}</span>
+<span class="dim">$</span> <span class="accent">echo $?</span>
+<span class="neg">3</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <div class="part">
+    <h2>Reference</h2>
+    <p class="part-note">Identity strip variants, and the palette.</p>
+  </div>
+
+  <section class="screen">
+    <h3>Identity strip — right slot of the top bar</h3>
+    <p class="cap-note">The full identity runs to 66 characters, so it cannot share a line with a breadcrumb at 80 columns. The bar shows the minimum, escalating only when a session is nearly expired. Full detail lives in <code>finops auth</code>.</p>
+    <div class="term">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-title">variants</span></div>
+      <div class="term-body">
+<pre><span class="dim">SSO + org    </span> <span class="dim">prod-mgmt · org 14</span>
+<span class="dim">profile      </span> <span class="dim">prod · profile "prod"</span>
+<span class="dim">ambient      </span> <span class="dim">ci-runner · IRSA</span>
+<span class="dim">expiring     </span> <span class="dim">prod-mgmt · org 14 ·</span> <span class="warn">SSO 12m ⚠</span>
+<span class="dim">pre-auth     </span> <span class="dim">(none — top bar reads "finops 3.0 · auth")</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen">
+    <h3>Colour semantics</h3>
+    <p class="cap-note">Every colour carries one meaning and only that meaning. Two rules govern use: never colour alone — each signal also carries a glyph (<span class="pos">✓</span> <span class="neg">✗</span> <span class="warn">⚠</span> ▲▼) — and apply by meaning, not magnitude, since a cost rise and a savings figure can be the same number with opposite valence.</p>
+    <ul class="swatches">
+      <li class="swatch"><span class="chip chip-neg"></span><span><span class="sw-name neg">negative</span><br><span class="sw-meaning">Cost increased, errors, budget breached, credentials expired.</span></span></li>
+      <li class="swatch"><span class="chip chip-pos"></span><span><span class="sw-name pos">positive</span><br><span class="sw-meaning">Cost decreased, savings available, success and checkmarks.</span></span></li>
+      <li class="swatch"><span class="chip chip-warn"></span><span><span class="sw-name warn">warning</span><br><span class="sw-meaning">Stale data, approximate figures, a session about to expire.</span></span></li>
+      <li class="swatch"><span class="chip chip-accent"></span><span><span class="sw-name accent">accent</span><br><span class="sw-meaning">Commands, keyboard shortcuts, interactive hints, bar charts.</span></span></li>
+      <li class="swatch"><span class="chip chip-dim"></span><span><span class="sw-name dim">dim</span><br><span class="sw-meaning">Labels, secondary info, timestamps, unavailable options.</span></span></li>
+      <li class="swatch"><span class="chip chip-text"></span><span><span class="sw-name">text</span><br><span class="sw-meaning">Primary content — the values the operator came to read.</span></span></li>
+      <li class="swatch"><span class="chip chip-sel"></span><span><span class="sw-name">selection</span><br><span class="sw-meaning">Background of the currently highlighted row.</span></span></li>
+      <li class="swatch"><span class="chip chip-border"></span><span><span class="sw-name">border</span><br><span class="sw-meaning">Frames and rules; structure without drawing attention.</span></span></li>
+    </ul>
+  </section>
+
+</div>
